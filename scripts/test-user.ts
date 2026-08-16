@@ -100,11 +100,23 @@ switch (task) {
     // test ones. Rather than blocking every remote target — which would defeat
     // the purpose, since test users are deliberately created there — refuse the
     // two shapes that indicate a real person, and let --force override.
-    const { data: ownedOrgs } = await admin
+    const { data: ownedOrgs, error: ownedOrgsError } = await admin
       .from("org_members")
       .select("role, orgs(name)")
       .eq("user_id", user.id)
       .eq("role", "owner");
+
+    // Fail closed, and before --force is considered: a failed query returns no
+    // ownership rows, which would look exactly like "owns nothing" and let the
+    // guard wave through the very accounts it exists to protect. --force is for
+    // overriding a known reason, not an unknown state.
+    if (ownedOrgsError) {
+      console.error(
+        `Could not check workspace ownership for ${user.email}: ${ownedOrgsError.message}\n` +
+          `Refusing to delete while that is unknown.`,
+      );
+      process.exit(1);
+    }
 
     const reasons: string[] = [];
     if (provider !== "email") {
