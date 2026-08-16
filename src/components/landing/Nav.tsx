@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { focusEarlyAccess } from "./cta";
 
 const links = [
@@ -34,9 +36,12 @@ export function Nav() {
         </div>
 
         <div className="flex items-center gap-4">
-          <a href="#" className="text-sm text-ink-secondary transition-colors hover:text-brand">
+          <Link
+            to="/login"
+            className="text-sm text-ink-secondary transition-colors hover:text-brand"
+          >
             Sign in
-          </a>
+          </Link>
           <button
             type="button"
             onClick={focusEarlyAccess}
