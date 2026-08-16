@@ -21,9 +21,29 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
+# Environment — never commit real credentials. .env.example is the tracked template.
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+
+# Supabase CLI local state
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# AI assistant / editor tooling.
+# The specs that used to live in .cursor/rules are preserved, and tracked, in
+# docs/project-conventions.md — that content is project documentation, not
+# editor config.
+#
+# .lovable/ is deliberately NOT ignored: project.json identifies this repo to
+# Lovable, which syncs from the connected branch (see AGENTS.md).
+.claude/
+.cursor/
 
 # Editor directories and files
 .vscode/*

@@ -6,3 +6,7 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+# Emitted verbatim by `bun run db:types`. Left unformatted on purpose: keeping
+# it byte-identical to the generator means any diff is a real schema change
+# rather than reformatting noise.
+types.gen.ts
