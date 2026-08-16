@@ -44,13 +44,8 @@ export function getUserSupabase(): UserSupabase {
   });
 }
 
-/**
- * The signed-in user, or null. Prefer this over `getSession()`: it revalidates
- * the JWT with the auth server instead of trusting a cookie the client controls.
- */
-export async function getCurrentUser() {
-  const supabase = getUserSupabase();
-  const { data, error } = await supabase.auth.getUser();
-  if (error) return null;
-  return data.user;
-}
+// A `getCurrentUser()` helper used to live here. It had no callers — every
+// route reads identity through `getAuthContext()` in auth.service.ts, which
+// needs the profile and org list in the same round trip — and it collapsed
+// "signed out" and "auth server unreachable" into the same null. Removed
+// rather than elaborated, so there is one way to answer "who is this".

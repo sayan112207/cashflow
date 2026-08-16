@@ -161,6 +161,7 @@ export function AuthForm({ mode, onSubmit, notice, initialError = null }: Props)
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={pending}
                     aria-invalid={!!error}
+                    aria-describedby={error ? "auth-error" : undefined}
                     className="w-full rounded-[10px] border border-input bg-background px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus-visible:border-brand focus-visible:outline-none disabled:opacity-60"
                     placeholder="you@company.com"
                   />

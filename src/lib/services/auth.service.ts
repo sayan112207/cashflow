@@ -43,7 +43,7 @@ export const getAuthContext = createServerFn({ method: "GET" }).handler(
 
     const authUser = userData.user;
 
-    const [{ data: profile }, { data: memberships }] = await Promise.all([
+    const [{ data: profile }, { data: memberships, error: membershipsError }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, avatar_url")
@@ -51,6 +51,15 @@ export const getAuthContext = createServerFn({ method: "GET" }).handler(
         .maybeSingle(),
       supabase.from("org_members").select("role, orgs(id, name)"),
     ]);
+
+    // A failed query is not the same as "belongs to no orgs". Silently
+    // returning an empty list would send an existing user to /onboarding and
+    // invite them to create a second workspace. Fail loudly instead — the
+    // route guard surfaces it rather than acting on a wrong answer.
+    if (membershipsError) {
+      console.error("[auth] could not load org memberships", membershipsError);
+      throw new Error("Could not load your workspaces. Please try again.");
+    }
 
     const orgs: OrgSummary[] = (memberships ?? []).flatMap((m) => {
       // The embedded relation is an object for a to-one join, but be defensive:
@@ -81,7 +90,27 @@ export const signUpWithPassword = createServerFn({ method: "POST" })
     });
 
     if (error) {
-      return { status: "error", message: error.message };
+      // Log the provider's own wording; return only messages we have chosen.
+      // Passing `error.message` straight through would surface internal auth
+      // detail to anyone probing the form.
+      console.error("[auth] sign-up failed", { code: error.code, message: error.message });
+
+      // These two are safe to name and actionable — anything else is generic.
+      // "over_email_send_rate_limit" in particular looks like an app bug when
+      // reported as a generic failure, and the fix is a project setting.
+      if (error.code === "over_email_send_rate_limit") {
+        return {
+          status: "error",
+          message: "Too many sign-up emails just now. Please try again in a little while.",
+        };
+      }
+      if (error.code === "email_address_invalid") {
+        return { status: "error", message: "That email address isn't accepted." };
+      }
+      if (error.code === "weak_password") {
+        return { status: "error", message: "Choose a stronger password." };
+      }
+      return { status: "error", message: "Couldn't create your account. Please try again." };
     }
 
     // With "Confirm email" enabled (the Supabase default) signUp returns a user

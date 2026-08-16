@@ -12,9 +12,18 @@
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const TYPES_PATH = "src/lib/supabase/types.gen.ts";
-const CLI = "./node_modules/.bin/supabase";
+import { loadEnvFrom } from "./load-env";
+
+// Resolved against this file, not process.cwd(), so the script works when run
+// from a subdirectory rather than only from the package root.
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const TYPES_PATH = join(ROOT, "src/lib/supabase/types.gen.ts");
+const CLI = join(ROOT, "node_modules/.bin/supabase");
+
+loadEnvFrom(join(ROOT, ".env"));
 
 const dbUrl = process.env["SUPABASE_DB_URL"];
 if (!dbUrl) {
@@ -30,10 +39,21 @@ const [task, ...extra] = process.argv.slice(2);
 const redact = (s: string) => s.split(dbUrl).join("[DB_URL]");
 
 function run(args: string[], capture = false) {
-  const res = spawnSync(CLI, args, {
+  // --workdir: the CLI locates supabase/config.toml relative to the working
+  // directory, so without this it fails when invoked from a subdirectory.
+  const res = spawnSync(CLI, ["--workdir", ROOT, ...args], {
     encoding: "utf8",
     stdio: capture ? ["inherit", "pipe", "pipe"] : "inherit",
+    // Passed explicitly: under Bun, values written into `process.env` at
+    // runtime are not inherited by spawned children, so the variables loaded
+    // from .env above would otherwise be invisible to the CLI.
+    env: { ...process.env },
   });
+  // A missing binary surfaces as res.error with status === null, which would
+  // otherwise become a bare exit 1 with nothing explaining it.
+  if (res.error) {
+    console.error(`Could not run ${CLI}: ${res.error.message}\nDid you run \`bun install\`?`);
+  }
   if (capture) {
     if (res.stderr) process.stderr.write(redact(res.stderr));
     return res;

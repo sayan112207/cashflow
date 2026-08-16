@@ -54,10 +54,12 @@ function AppHome() {
               />
             ) : (
               <span className="flex size-8 items-center justify-center rounded-full bg-brand-subtle text-xs font-semibold text-brand-deep">
-                {user.displayName.slice(0, 1).toUpperCase()}
+                {/* displayName is "" if the profile row is missing or hidden by
+                    RLS; fall back to the email so the avatar is never blank. */}
+                {(user.displayName || user.email || "?").slice(0, 1).toUpperCase()}
               </span>
             )}
-            <span className="text-sm text-ink">{user.displayName}</span>
+            <span className="text-sm text-ink">{user.displayName || user.email}</span>
             <button
               onClick={handleSignOut}
               disabled={signingOut}

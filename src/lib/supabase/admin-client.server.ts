@@ -12,9 +12,13 @@ import type { Database } from "./types.gen";
  * a user-facing read — that discards the tenancy guarantees the schema is built
  * on and moves them into application code, where they get forgotten.
  *
- * Background jobs using this client should set the audit actor explicitly:
- *   await supabase.rpc('set_config', ...)  /  select set_config('app.actor_id', …)
- * otherwise `auth.uid()` is null and the audit trail loses attribution.
+ * Audit attribution: `auth.uid()` is null for service-role calls, so
+ * `app.tg_audit()` records actor_id = NULL. It falls back to the
+ * `app.actor_id` GUC — but that cannot be set from a separate supabase-js
+ * call, because PostgREST gives every call its own transaction and the
+ * setting would be gone before the next one runs. To attribute a background
+ * write, do the `set_config('app.actor_id', …, true)` and the write inside a
+ * single `public.*` RPC.
  */
 export function getAdminSupabase(): SupabaseClient<Database> {
   return createClient<Database>(getPublicEnv().supabaseUrl, getServiceRoleKey(), {

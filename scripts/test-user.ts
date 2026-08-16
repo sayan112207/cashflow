@@ -11,12 +11,24 @@
  * Uses the service-role key, so it BYPASSES RLS. Never import this from app
  * code — it lives in scripts/ and is not part of the bundle.
  *
+ * It acts on whatever project `.env` points at, which today is the hosted one.
+ * `delete` is therefore destructive against real data, so it prints the target
+ * host and the account it matched before removing anything.
+ *
  * Usage:
  *   bun scripts/test-user.ts create [email] [password]   # defaults are generated
  *   bun scripts/test-user.ts delete <email>
  *   bun scripts/test-user.ts list
  */
 import { createClient } from "@supabase/supabase-js";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { loadEnvFrom } from "./load-env";
+
+// Load .env from the package root, not the current directory, so this works
+// when run from a subdirectory.
+loadEnvFrom(join(dirname(fileURLToPath(import.meta.url)), "..", ".env"));
 
 const url = process.env["VITE_SUPABASE_URL"];
 const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
@@ -82,6 +94,12 @@ switch (task) {
       console.error(`No user with email ${argEmail}`);
       process.exit(1);
     }
+    // Name the target before a destructive change — `.env` may well point at a
+    // project holding real accounts.
+    console.log(
+      `Deleting from ${new URL(url).host}:\n` +
+        `  ${user.email}  created ${user.created_at}  provider ${String(user.app_metadata["provider"] ?? "?")}`,
+    );
     const { error } = await admin.auth.admin.deleteUser(user.id);
     if (error) {
       console.error(`Could not delete: ${error.message}`);
@@ -108,7 +126,9 @@ switch (task) {
     console.log(`${data.users.length} user(s):\n`);
     for (const u of data.users) {
       const confirmed = u.email_confirmed_at ? "confirmed" : "UNCONFIRMED";
-      const provider = u.app_metadata["provider"] ?? "?";
+      // app_metadata is an index signature, so `provider` is `any` — coerce
+      // before padEnd rather than assuming a string comes back.
+      const provider = String(u.app_metadata["provider"] ?? "?");
       console.log(
         `  ${(u.email ?? "—").padEnd(38)} ${String(names.get(u.id) ?? "—").padEnd(20)} ${provider.padEnd(8)} ${confirmed}`,
       );
