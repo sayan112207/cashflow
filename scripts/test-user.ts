@@ -94,11 +94,44 @@ switch (task) {
       console.error(`No user with email ${argEmail}`);
       process.exit(1);
     }
-    // Name the target before a destructive change — `.env` may well point at a
-    // project holding real accounts.
+    const provider = String(user.app_metadata["provider"] ?? "?");
+
+    // `.env` points at the hosted project, which holds real accounts alongside
+    // test ones. Rather than blocking every remote target — which would defeat
+    // the purpose, since test users are deliberately created there — refuse the
+    // two shapes that indicate a real person, and let --force override.
+    const { data: ownedOrgs } = await admin
+      .from("org_members")
+      .select("role, orgs(name)")
+      .eq("user_id", user.id)
+      .eq("role", "owner");
+
+    const reasons: string[] = [];
+    if (provider !== "email") {
+      reasons.push(`signed in via "${provider}", so this is not a password test account`);
+    }
+    if (ownedOrgs && ownedOrgs.length > 0) {
+      const names = ownedOrgs
+        .map((m) => (m.orgs as unknown as { name: string } | null)?.name ?? "?")
+        .join(", ");
+      reasons.push(`owns ${ownedOrgs.length} workspace(s): ${names}`);
+    }
+
+    const force = process.argv.includes("--force");
+    if (reasons.length > 0 && !force) {
+      console.error(
+        `Refusing to delete ${user.email} from ${new URL(url).host}:\n` +
+          reasons.map((r) => `  - ${r}`).join("\n") +
+          `\n\nDeleting cascades the profile and all org memberships. ` +
+          `Pass --force if you are certain.`,
+      );
+      process.exit(1);
+    }
+
     console.log(
       `Deleting from ${new URL(url).host}:\n` +
-        `  ${user.email}  created ${user.created_at}  provider ${String(user.app_metadata["provider"] ?? "?")}`,
+        `  ${user.email}  created ${user.created_at}  provider ${provider}` +
+        (force && reasons.length > 0 ? `\n  (--force: ${reasons.join("; ")})` : ""),
     );
     const { error } = await admin.auth.admin.deleteUser(user.id);
     if (error) {
