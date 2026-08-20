@@ -1,9 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 
 import { AgingBar } from "@/components/app/AgingBar";
 import { AppButton } from "@/components/app/AppButton";
 import { AppCheckbox } from "@/components/app/AppCheckbox";
+import { AppSkeleton } from "@/components/app/AppSkeleton";
 import { BulkBar } from "@/components/app/BulkBar";
 import { DataTable, type Column } from "@/components/app/DataTable";
 import { MetricTile } from "@/components/app/MetricTile";
@@ -17,47 +19,426 @@ import {
   formatLongDate,
   formatTimeOfDay,
 } from "@/lib/format";
-import type { ChaseQueueItem } from "@/lib/schemas/dashboard";
+import type { ChaseQueue, ChaseQueueItem, DashboardSummary } from "@/lib/schemas/dashboard";
 import {
+  aggregatesUnavailableFixture,
+  allAgedSummaryFixture,
   chaseQueueFixture,
+  emptyChaseQueueFixture,
+  largeTotalSummaryFixture,
+  longAccountNameChaseQueueFixture,
   PRE_CHECKED_INVOICE_IDS,
   summaryFixture,
 } from "@/lib/services/dashboard.mocks";
 
 /**
- * Fixtures are imported directly, on purpose. This build is about whether the
- * layout holds; wiring the service in would mix layout bugs with loading,
- * error and race-condition bugs in the same change.
+ * Temporary. Spec §6's five states are otherwise unreachable without a backend.
+ * Deleted when this screen is wired to the service — nothing should come to
+ * depend on the param.
+ *
+ *   /app/dashboard
+ *   /app/dashboard?state=loading
+ *   /app/dashboard?state=empty
+ *   /app/dashboard?state=error
+ *   /app/dashboard?state=overflow
+ *   /app/dashboard?state=aged
  */
+const dashboardSearchSchema = z.object({
+  state: z.enum(["loading", "empty", "error", "overflow", "aged"]).optional(),
+});
+
 export const Route = createFileRoute("/app/dashboard")({
+  validateSearch: dashboardSearchSchema,
   head: () => ({ meta: [{ title: `Dashboard — ${PRODUCT_NAME}` }] }),
   component: DashboardPage,
 });
 
+type PreviewState = z.infer<typeof dashboardSearchSchema>["state"];
+
+type DashboardView =
+  | { kind: "loading" }
+  | { kind: "error"; message: string; queue: ChaseQueue }
+  | { kind: "ready"; summary: DashboardSummary; queue: ChaseQueue };
+
 /**
  * FILLER DATA — every figure on this screen except the user's name comes from
- * these two fixtures, not from the API. The account names, invoice numbers and
- * amounts are invented; do not read anything into them.
- *
- * This is the only seam. Step 7 swaps these two bindings for `getSummary()` and
- * `getChaseQueue()` behind TanStack Query, and nothing below changes: the
- * fixtures are typed as the zod schemas' output, so the component already
- * consumes exactly the shape a real response parses into.
+ * fixtures, not from the API. `viewFor` is the seam: Step 7 replaces it with
+ * the service calls, and the rest of this file already consumes the schemas'
+ * output types.
  */
-const summary = summaryFixture;
-const queue = chaseQueueFixture;
+function viewFor(state: PreviewState): DashboardView {
+  switch (state) {
+    case "loading":
+      return { kind: "loading" };
+    case "error":
+      return {
+        kind: "error",
+        message: aggregatesUnavailableFixture.error.message,
+        queue: chaseQueueFixture,
+      };
+    case "empty":
+      return { kind: "ready", summary: summaryFixture, queue: emptyChaseQueueFixture };
+    case "aged":
+      return { kind: "ready", summary: allAgedSummaryFixture, queue: emptyChaseQueueFixture };
+    case "overflow":
+      return {
+        kind: "ready",
+        summary: largeTotalSummaryFixture,
+        queue: longAccountNameChaseQueueFixture,
+      };
+    default:
+      return { kind: "ready", summary: summaryFixture, queue: chaseQueueFixture };
+  }
+}
+
+/**
+ * Spec §6: an empty queue is "everything is 90+" when that bucket holds the
+ * whole book. `share_pct` is the signal — comparing money strings would be
+ * domain logic the frontend is not allowed to do.
+ */
+function isAllAged(summary: DashboardSummary): boolean {
+  const oldest = summary.aging.find((segment) => segment.bucket === "90+");
+  return oldest !== undefined && oldest.share_pct === 100;
+}
 
 function DashboardPage() {
-  // Resolved by the /app guard, so it is never null by the time this renders.
+  const { state } = Route.useSearch();
   const { user } = Route.useRouteContext();
+  const navigate = Route.useNavigate();
   const firstName = formatFirstName(user.displayName);
   const greeting = formatGreeting();
+  const view = viewFor(state);
 
-  const [selected, setSelected] = useState<ReadonlySet<string>>(
-    () => new Set(PRE_CHECKED_INVOICE_IDS),
+  function retry() {
+    void navigate({ to: "/app/dashboard", search: {} });
+  }
+
+  const asOf = view.kind === "ready" ? view.summary.as_of : null;
+
+  return (
+    <div aria-busy={view.kind === "loading" || undefined}>
+      <header className="mb-6">
+        <h1 className="text-title font-bold tracking-tight text-fg" suppressHydrationWarning>
+          {firstName ? `${greeting}, ${firstName}` : greeting}
+        </h1>
+        {asOf ? (
+          <p className="mt-1 text-prose font-normal text-fg-soft">
+            {formatLongDate(asOf)} · Last synced at {formatTimeOfDay(asOf)}
+          </p>
+        ) : (
+          // Same line-height as the metadata so the tile row does not jump
+          // when loading resolves into a timestamp.
+          <p className="mt-1 text-prose font-normal text-fg-soft">&nbsp;</p>
+        )}
+      </header>
+
+      {view.kind === "loading" ? (
+        <DashboardLoading />
+      ) : view.kind === "error" ? (
+        <>
+          <div className="mb-4 flex items-center gap-3">
+            <p role="alert" className="text-body font-semibold text-fg">
+              {view.message}
+            </p>
+            <AppButton variant="secondary" onClick={retry}>
+              Retry
+            </AppButton>
+          </div>
+          <TileRow summary={null} />
+          <ChaseNowSection queue={view.queue} />
+        </>
+      ) : (
+        <>
+          <TileRow summary={view.summary} />
+          <section className="mt-8">
+            <h2 className="mb-4 text-section font-bold tracking-tight text-fg">
+              Where the money is sitting
+            </h2>
+            <AgingBar segments={view.summary.aging} />
+          </section>
+          <AttentionRow summary={view.summary} />
+          <ChaseNowSection
+            queue={view.queue}
+            {...(view.queue.items.length === 0
+              ? {
+                  emptyAmount: view.summary.tiles.total_outstanding,
+                  emptyKind: isAllAged(view.summary) ? "aged" : "current",
+                }
+              : {})}
+          />
+        </>
+      )}
+    </div>
   );
+}
 
-  const allSelected = queue.items.length > 0 && selected.size === queue.items.length;
+function TileRow({ summary }: { summary: DashboardSummary | null }) {
+  const dash = summary === null;
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      <MetricTile
+        to="/app/accounts"
+        eyebrow="Total outstanding"
+        value={dash ? "—" : formatINR(summary.tiles.total_outstanding)}
+        subline={dash ? "\u00a0" : `${summary.tiles.account_count} accounts`}
+      />
+      <MetricTile
+        to="/app/invoices"
+        search={{ status: "overdue" }}
+        eyebrow="Overdue"
+        value={dash ? "—" : formatINR(summary.tiles.overdue)}
+        subline={dash ? "\u00a0" : `${summary.tiles.overdue_share_pct.toFixed(1)}% of book`}
+        tone="danger"
+      />
+      <MetricTile
+        to="/app/invoices"
+        eyebrow="Open invoices"
+        value={dash ? "—" : String(summary.tiles.open_invoice_count)}
+        subline={dash ? "\u00a0" : `across ${summary.tiles.account_count} accounts`}
+      />
+      <MetricTile
+        to="/app/accounts"
+        search={{ filter: "missing-contact" }}
+        eyebrow="Missing contacts"
+        value={dash ? "—" : String(summary.tiles.missing_contact_account_count)}
+        subline={dash ? "\u00a0" : "accounts can't be chased"}
+      />
+    </div>
+  );
+}
+
+function AttentionRow({ summary }: { summary: DashboardSummary }) {
+  return (
+    <section className="mt-8">
+      <h2 className="mb-4 text-section font-bold tracking-tight text-fg">Needs your attention</h2>
+      <div className="grid grid-cols-3 gap-4">
+        <MetricTile
+          to="/app/accounts"
+          search={{ filter: "missing-contact" }}
+          value={String(summary.attention.accounts_without_p0)}
+          subline="accounts with no P0 contact"
+        />
+        <MetricTile
+          to="/app/invoices"
+          search={{ status: "disputed" }}
+          value={String(summary.attention.disputes_open)}
+          subline={summary.attention.disputes_open === 1 ? "dispute raised" : "disputes raised"}
+        />
+        <MetricTile
+          to="/app/invoices"
+          search={{ status: "promise-broken" }}
+          value={String(summary.attention.promises_broken_this_week)}
+          subline="promises broken this week"
+        />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Spec §6 enumerates three skeleton regions. The attention strip is not in
+ * that list, but omitting it would drop the Chase now block by a card-row when
+ * data arrives, which is the layout shift the same paragraph forbids. Three
+ * card skeletons occupy the strip's final size; they are not extra chrome.
+ */
+function DashboardLoading() {
+  return (
+    <>
+      <span className="sr-only">Loading dashboard</span>
+      <div className="grid grid-cols-4 gap-4">
+        <TileSkeleton />
+        <TileSkeleton />
+        <TileSkeleton />
+        <TileSkeleton />
+      </div>
+      <section className="mt-8">
+        <h2 className="mb-4 text-section font-bold tracking-tight text-fg">
+          Where the money is sitting
+        </h2>
+        <AgingBarSkeleton />
+      </section>
+      <section className="mt-8">
+        <h2 className="mb-4 text-section font-bold tracking-tight text-fg">Needs your attention</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <TileSkeleton eyebrow={false} />
+          <TileSkeleton eyebrow={false} />
+          <TileSkeleton eyebrow={false} />
+        </div>
+      </section>
+      <section className="mt-8">
+        <h2 className="text-section font-bold tracking-tight text-fg">Chase now</h2>
+        <p className="mt-1 mb-4 text-prose font-normal text-fg-soft">
+          Ranked by what's most worth chasing today
+        </p>
+        <DataTable columns={SKELETON_COLUMNS} rows={SKELETON_ROWS} rowKey={(row) => row.id} />
+      </section>
+    </>
+  );
+}
+
+function TileSkeleton({ eyebrow = true }: { eyebrow?: boolean }) {
+  return (
+    <div className="rounded-card border border-hairline bg-card px-5 py-4">
+      {eyebrow ? <AppSkeleton className="h-3 w-24" /> : null}
+      {/* h-7 is 28px — the metric size — so the card is the loaded tile's height. */}
+      <AppSkeleton className={eyebrow ? "mt-2 h-7 w-32" : "h-7 w-16"} />
+      <AppSkeleton className="mt-1 h-3 w-28" />
+    </div>
+  );
+}
+
+function AgingBarSkeleton() {
+  return (
+    <div>
+      <AppSkeleton className="h-2.5 w-full rounded-pill" />
+      <div className="mt-3 grid grid-cols-5 gap-4">
+        {AGING_SKELETON_KEYS.map((key) => (
+          <div key={key}>
+            <AppSkeleton className="h-3 w-16" />
+            <AppSkeleton className="mt-1 h-3 w-20" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const AGING_SKELETON_KEYS = ["none", "30", "60", "90", "over"] as const;
+
+const SKELETON_ROWS = [
+  { id: "s1" },
+  { id: "s2" },
+  { id: "s3" },
+  { id: "s4" },
+  { id: "s5" },
+  { id: "s6" },
+] as const;
+
+const SKELETON_COLUMNS: readonly Column<(typeof SKELETON_ROWS)[number]>[] = [
+  {
+    id: "select",
+    header: "Select",
+    headerHidden: true,
+    cell: () => <AppSkeleton className="size-4" />,
+  },
+  { id: "account", header: "Account", cell: () => <AppSkeleton className="h-3.5 w-40" /> },
+  { id: "invoice", header: "Invoice", cell: () => <AppSkeleton className="h-3.5 w-16" /> },
+  {
+    id: "amount",
+    header: "Amount",
+    align: "right",
+    cell: () => <AppSkeleton className="ml-auto h-3.5 w-20" />,
+  },
+  {
+    id: "overdue",
+    header: "Overdue",
+    align: "right",
+    cell: () => <AppSkeleton className="ml-auto h-3.5 w-16" />,
+  },
+  {
+    id: "priority",
+    header: "Priority",
+    cell: () => <AppSkeleton className="h-5 w-20 rounded-pill" />,
+  },
+  { id: "reason", header: "Reason", cell: () => <AppSkeleton className="h-3.5 w-48" /> },
+  {
+    id: "action",
+    header: "",
+    headerHidden: true,
+    cell: () => <AppSkeleton className="ml-auto h-3.5 w-12" />,
+  },
+];
+
+function ChaseNowSection({
+  queue,
+  emptyAmount,
+  emptyKind,
+}: {
+  queue: ChaseQueue;
+  emptyAmount?: string;
+  emptyKind?: "current" | "aged";
+}) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-section font-bold tracking-tight text-fg">Chase now</h2>
+      <p className="mt-1 mb-4 text-prose font-normal text-fg-soft">
+        Ranked by what's most worth chasing today
+      </p>
+      {emptyKind === "current" && emptyAmount !== undefined ? (
+        <EmptyCurrent total={emptyAmount} />
+      ) : emptyKind === "aged" ? (
+        <EmptyAged />
+      ) : (
+        <ChaseTable items={queue.items} />
+      )}
+    </section>
+  );
+}
+
+function EmptyCurrent({ total }: { total: string }) {
+  return (
+    <div className="mx-auto max-w-md py-10 text-center">
+      <EmptyCheckIcon />
+      <h3 className="mt-4 text-section font-bold tracking-tight text-fg">
+        Nothing overdue. All {formatINR(total)} is current.
+      </h3>
+      <p className="mt-2 text-prose font-normal text-fg-soft">
+        We'll start chasing again the moment something slips.
+      </p>
+    </div>
+  );
+}
+
+function EmptyAged() {
+  return (
+    <div className="mx-auto max-w-md py-10 text-center">
+      <h3 className="text-section font-bold tracking-tight text-fg">
+        Nothing in the chase queue — everything is over 90 days old.
+      </h3>
+      <Link
+        to="/app/reports"
+        className="mt-3 inline-block text-body font-semibold text-accent hover:text-accent-hover"
+      >
+        Reports
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * 40px, stroke 1.6, muted — spec §6. Inline rather than a lucide icon because
+ * lucide's default stroke is 2 and its size-4 override on buttons does not
+ * apply here, but matching 1.6 exactly is cheaper as three paths than as a
+ * library default plus an override.
+ */
+function EmptyCheckIcon() {
+  return (
+    <svg
+      className="mx-auto size-10 text-fg-muted"
+      viewBox="0 0 40 40"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M13 20.5 17.5 25 27 15.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChaseTable({ items }: { items: readonly ChaseQueueItem[] }) {
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => {
+    const present = new Set(items.map((item) => item.invoice_id));
+    return new Set(PRE_CHECKED_INVOICE_IDS.filter((id) => present.has(id)));
+  });
+
+  const allSelected = items.length > 0 && selected.size === items.length;
   const headerChecked = allSelected ? true : selected.size === 0 ? false : "indeterminate";
 
   function toggleRow(invoiceId: string) {
@@ -71,9 +452,9 @@ function DashboardPage() {
 
   function toggleAll() {
     setSelected((previous) =>
-      previous.size === queue.items.length
+      previous.size === items.length
         ? new Set<string>()
-        : new Set(queue.items.map((item) => item.invoice_id)),
+        : new Set(items.map((item) => item.invoice_id)),
     );
   }
 
@@ -112,7 +493,6 @@ function DashboardPage() {
       id: "overdue",
       header: "Overdue",
       align: "right",
-      // Spec §7: never "0 days". A non-overdue invoice reads "Not yet due".
       text: (row) => (row.days_overdue > 0 ? formatDays(row.days_overdue) : "Not yet due"),
     },
     {
@@ -122,14 +502,11 @@ function DashboardPage() {
     },
     { id: "reason", header: "Reason", text: (row) => row.priority_reason, truncateAt: "sm" },
     {
-      // Unheaded, so the table announces exactly seven column headers.
       id: "action",
       header: "",
       headerHidden: true,
       align: "right",
       cell: () => (
-        // `row-action` hides this until the row is hovered *or* the button
-        // itself takes focus. The rule lives in app-tokens.css.
         <AppButton variant="text" className="row-action ml-auto">
           Chase
         </AppButton>
@@ -139,101 +516,13 @@ function DashboardPage() {
 
   return (
     <>
-      <header className="mb-6">
-        {/*
-         * The spec's "Good morning, Priya" was sample copy — Priya is the
-         * persona and the greeting was frozen at one time of day. Both are live
-         * now, and the name degrades to a bare greeting rather than falling
-         * back to an email.
-         *
-         * suppressHydrationWarning covers one case only: the page rendering at
-         * 11:59:59 and hydrating at 12:00:01, where "morning" and "afternoon"
-         * are both correct for the moment they were computed. The time zone is
-         * pinned in the formatter, so that sub-second window is the whole of
-         * the remaining risk.
-         */}
-        <h1 className="text-title font-bold tracking-tight text-fg" suppressHydrationWarning>
-          {firstName ? `${greeting}, ${firstName}` : greeting}
-        </h1>
-        <p className="mt-1 text-prose font-normal text-fg-soft">
-          {formatLongDate(summary.as_of)} · Last synced at {formatTimeOfDay(summary.as_of)}
-        </p>
-      </header>
-
-      <div className="grid grid-cols-4 gap-4">
-        <MetricTile
-          to="/app/accounts"
-          eyebrow="Total outstanding"
-          value={formatINR(summary.tiles.total_outstanding)}
-          subline={`${summary.tiles.account_count} accounts`}
-        />
-        <MetricTile
-          to="/app/invoices"
-          search={{ status: "overdue" }}
-          eyebrow="Overdue"
-          value={formatINR(summary.tiles.overdue)}
-          subline={`${summary.tiles.overdue_share_pct.toFixed(1)}% of book`}
-          tone="danger"
-        />
-        <MetricTile
-          to="/app/invoices"
-          eyebrow="Open invoices"
-          value={String(summary.tiles.open_invoice_count)}
-          subline={`across ${summary.tiles.account_count} accounts`}
-        />
-        <MetricTile
-          to="/app/accounts"
-          search={{ filter: "missing-contact" }}
-          eyebrow="Missing contacts"
-          value={String(summary.tiles.missing_contact_account_count)}
-          subline="accounts can't be chased"
-        />
-      </div>
-
-      <section className="mt-8">
-        <h2 className="mb-4 text-section font-bold tracking-tight text-fg">
-          Where the money is sitting
-        </h2>
-        <AgingBar segments={summary.aging} />
-      </section>
-
-      <section className="mt-8">
-        <h2 className="mb-4 text-section font-bold tracking-tight text-fg">Needs your attention</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <MetricTile
-            to="/app/accounts"
-            search={{ filter: "missing-contact" }}
-            value={String(summary.attention.accounts_without_p0)}
-            subline="accounts with no P0 contact"
-          />
-          <MetricTile
-            to="/app/invoices"
-            search={{ status: "disputed" }}
-            value={String(summary.attention.disputes_open)}
-            subline={summary.attention.disputes_open === 1 ? "dispute raised" : "disputes raised"}
-          />
-          <MetricTile
-            to="/app/invoices"
-            search={{ status: "promise-broken" }}
-            value={String(summary.attention.promises_broken_this_week)}
-            subline="promises broken this week"
-          />
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-section font-bold tracking-tight text-fg">Chase now</h2>
-        <p className="mt-1 mb-4 text-prose font-normal text-fg-soft">
-          Ranked by what's most worth chasing today
-        </p>
-        <BulkBar count={selected.size} onChase={chase} />
-        <DataTable
-          columns={columns}
-          rows={queue.items}
-          rowKey={(row) => row.invoice_id}
-          isRowSelected={(row) => selected.has(row.invoice_id)}
-        />
-      </section>
+      <BulkBar count={selected.size} onChase={chase} />
+      <DataTable
+        columns={columns}
+        rows={items}
+        rowKey={(row) => row.invoice_id}
+        isRowSelected={(row) => selected.has(row.invoice_id)}
+      />
     </>
   );
 }

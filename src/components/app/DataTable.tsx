@@ -67,12 +67,20 @@ type DataTableProps<Row> = {
  * primitive's own `overflow-auto` wrapper — adding a second one here would
  * nest two scrollers and the outer would never engage.
  *
+ * `min-w-max` stops columns compressing: the table is as wide as its content,
+ * and the wrapper scrolls when that is wider than the pane. Spec §9 names
+ * 1100px as the breakpoint; there is no 1100px token, so this is content-driven
+ * rather than a fake floor that would scroll a 1280px laptop for no reason.
+ *
+ * The shell's `min-w-0` is what lets the wrapper actually shrink so this
+ * min-width can overflow.
+ *
  * Row height is padding-driven: the spec names a `--row-h` token that the
  * tokens file does not define, so `py-3` stands in at 12px.
  */
 export function DataTable<Row>({ columns, rows, rowKey, isRowSelected }: DataTableProps<Row>) {
   return (
-    <Table className="border-separate border-spacing-0">
+    <Table className="min-w-max border-separate border-spacing-0">
       <TableHeader>
         <TableRow className="border-hairline bg-subtle hover:bg-subtle">
           {columns.map((column) => (
@@ -106,7 +114,7 @@ export function DataTable<Row>({ columns, rows, rowKey, isRowSelected }: DataTab
                 <TableCell
                   key={column.id}
                   className={cn(
-                    "px-3 py-3 text-body font-semibold text-fg",
+                    "whitespace-nowrap px-3 py-3 text-body font-semibold text-fg",
                     column.align === "right" && "text-right",
                   )}
                 >

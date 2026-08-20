@@ -114,8 +114,11 @@ export function AppShell({ user, orgName, children }: AppShellProps) {
       </aside>
 
       {/* Spec asks for a 1400px cap and 28px of top padding; neither exists on
-          the permitted scales, so this is the nearest step down at 1280/24px. */}
-      <main className="max-w-7xl flex-1 bg-page px-8 pt-6 pb-10">{children}</main>
+          the permitted scales, so this is the nearest step down at 1280/24px.
+          min-w-0 is what lets the chase table's overflow-auto engage: a flex
+          child defaults to min-width:auto, which would grow the page to the
+          table's min-width instead of scrolling the table. */}
+      <main className="max-w-7xl min-w-0 flex-1 bg-page px-8 pt-6 pb-10">{children}</main>
     </div>
   );
 }

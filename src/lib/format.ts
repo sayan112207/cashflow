@@ -29,6 +29,11 @@ export function formatINR(value: string): string {
   return `${sign}₹${inrFormatter.format(Math.abs(amount))}`;
 }
 
+/** Spec §7: zero renders as ₹0 in muted ink, never as an em dash. */
+export function isZeroMoney(value: string): boolean {
+  return /^-?0+(?:\.0+)?$/.test(value);
+}
+
 /**
  * Renders a day count with its unit: 1 → "1 day", 30 → "30 days".
  *

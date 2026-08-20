@@ -1,4 +1,4 @@
-import { formatINR } from "@/lib/format";
+import { formatINR, isZeroMoney } from "@/lib/format";
 import type { AgingBucket, AgingSegment } from "@/lib/schemas/dashboard";
 
 /** Decorative fills. None of these is ever used for text. */
@@ -53,7 +53,13 @@ export function AgingBar({ segments }: { segments: readonly AgingSegment[] }) {
             <div className="text-eyebrow font-semibold tracking-widest text-fg-muted uppercase">
               {segment.bucket}
             </div>
-            <div className="tnum mt-1 text-prose font-semibold text-fg">
+            <div
+              className={
+                isZeroMoney(segment.amount)
+                  ? "tnum mt-1 text-prose font-semibold text-fg-muted"
+                  : "tnum mt-1 text-prose font-semibold text-fg"
+              }
+            >
               {formatINR(segment.amount)}
             </div>
           </div>
