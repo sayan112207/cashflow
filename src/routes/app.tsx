@@ -39,7 +39,7 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-page">
+    <div className="app-theme min-h-screen bg-page">
       <header className="border-b border-line bg-card">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" className="text-base font-semibold tracking-tight text-ink">
@@ -64,7 +64,7 @@ function AppLayout() {
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="rounded-[8px] border border-line px-3 py-1.5 text-sm text-ink-secondary transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
+              className="rounded-[8px] border border-line px-3 py-1.5 text-sm text-ink-secondary transition-colors hover:bg-hovered focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
             >
               {signingOut ? "Signing out…" : "Sign out"}
             </button>
