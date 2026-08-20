@@ -20,6 +20,7 @@ import { Route as AppAddEntriesRouteImport } from './routes/app/add-entries'
 import { Route as AppChasingRouteImport } from './routes/app/chasing'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppInvoicesRouteImport } from './routes/app/invoices'
+import { Route as AppKitchenSinkRouteImport } from './routes/app/kitchen-sink'
 import { Route as AppPaymentsRouteImport } from './routes/app/payments'
 import { Route as AppReportsRouteImport } from './routes/app/reports'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
@@ -80,6 +81,11 @@ const AppInvoicesRoute = AppInvoicesRouteImport.update({
   path: '/invoices',
   getParentRoute: () => AppRoute,
 } as any)
+const AppKitchenSinkRoute = AppKitchenSinkRouteImport.update({
+  id: '/kitchen-sink',
+  path: '/kitchen-sink',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPaymentsRoute = AppPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/app/chasing': typeof AppChasingRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/invoices': typeof AppInvoicesRoute
+  '/app/kitchen-sink': typeof AppKitchenSinkRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/app/chasing': typeof AppChasingRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/invoices': typeof AppInvoicesRoute
+  '/app/kitchen-sink': typeof AppKitchenSinkRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/app/chasing': typeof AppChasingRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/invoices': typeof AppInvoicesRoute
+  '/app/kitchen-sink': typeof AppKitchenSinkRoute
   '/app/payments': typeof AppPaymentsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/app/chasing'
     | '/app/dashboard'
     | '/app/invoices'
+    | '/app/kitchen-sink'
     | '/app/payments'
     | '/app/reports'
     | '/app/settings'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/app/chasing'
     | '/app/dashboard'
     | '/app/invoices'
+    | '/app/kitchen-sink'
     | '/app/payments'
     | '/app/reports'
     | '/app/settings'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/app/chasing'
     | '/app/dashboard'
     | '/app/invoices'
+    | '/app/kitchen-sink'
     | '/app/payments'
     | '/app/reports'
     | '/app/settings'
@@ -293,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInvoicesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/kitchen-sink': {
+      id: '/app/kitchen-sink'
+      path: '/kitchen-sink'
+      fullPath: '/app/kitchen-sink'
+      preLoaderRoute: typeof AppKitchenSinkRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/payments': {
       id: '/app/payments'
       path: '/payments'
@@ -330,6 +349,7 @@ interface AppRouteChildren {
   AppChasingRoute: typeof AppChasingRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppInvoicesRoute: typeof AppInvoicesRoute
+  AppKitchenSinkRoute: typeof AppKitchenSinkRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -342,6 +362,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChasingRoute: AppChasingRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppInvoicesRoute: AppInvoicesRoute,
+  AppKitchenSinkRoute: AppKitchenSinkRoute,
   AppPaymentsRoute: AppPaymentsRoute,
   AppReportsRoute: AppReportsRoute,
   AppSettingsRoute: AppSettingsRoute,

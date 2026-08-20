@@ -6,10 +6,15 @@ import { WORDMARK } from "@/lib/brand";
 /**
  * The product-app chrome: a 240px sticky sidebar beside the main region.
  *
- * `app-shell` on the root is load-bearing, not decorative. The token file hangs
- * the focus-visible outline, tabular numerals and the `row-action` hover/focus
- * rule off that class, so a screen rendered outside this wrapper silently loses
- * its accessibility floor.
+ * Both root classes are load-bearing, not decorative:
+ *
+ * `app-shell` is where the token file hangs the focus-visible outline, tabular
+ * numerals and the `row-action` hover/focus rule, so a screen rendered outside
+ * this wrapper silently loses its accessibility floor.
+ *
+ * `app-theme` re-points `--accent`, which the landing palette maps to a neutral
+ * hover grey and the app palette to brand green. Without it every accent
+ * surface in the app — filled buttons, link-style buttons — renders pale grey.
  *
  * All eight nav items are present and navigable from this build. Only the
  * Dashboard has a real screen; the rest render a bare heading. They are not
@@ -49,7 +54,7 @@ export function AppShell({ user, orgName, children }: AppShellProps) {
   const label = user.displayName || user.email || "";
 
   return (
-    <div className="app-shell flex min-h-screen">
+    <div className="app-theme app-shell flex min-h-screen">
       <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-hairline bg-subtle">
         {/* Spec asks for 17px; the type scale stops at 16px (text-section) and
             an arbitrary size is not permitted. */}
