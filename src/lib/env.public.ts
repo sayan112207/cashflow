@@ -17,11 +17,25 @@ import { z } from "zod";
 const publicEnvSchema = z.object({
   VITE_SUPABASE_URL: z.string().url("VITE_SUPABASE_URL must be a full URL"),
   VITE_SUPABASE_ANON_KEY: z.string().min(20, "VITE_SUPABASE_ANON_KEY looks truncated"),
+  /**
+   * Serve the product app from fixtures instead of the API.
+   *
+   * Spelled out rather than coerced: `Boolean("false")` is `true`, and a flag
+   * that silently means the opposite of what it reads is worse than absent.
+   * Anything other than "true"/"false" is a typo and should fail loudly.
+   */
+  VITE_USE_MOCKS: z
+    .enum(["true", "false"], {
+      errorMap: () => ({ message: 'VITE_USE_MOCKS must be exactly "true" or "false"' }),
+    })
+    .optional()
+    .default("false"),
 });
 
 export type PublicEnv = {
   readonly supabaseUrl: string;
   readonly supabaseAnonKey: string;
+  readonly useMocks: boolean;
 };
 
 let cached: PublicEnv | undefined;
@@ -32,6 +46,7 @@ export function getPublicEnv(): PublicEnv {
   const parsed = publicEnvSchema.safeParse({
     VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    VITE_USE_MOCKS: import.meta.env.VITE_USE_MOCKS,
   });
 
   if (!parsed.success) {
@@ -45,6 +60,7 @@ export function getPublicEnv(): PublicEnv {
   cached = {
     supabaseUrl: parsed.data.VITE_SUPABASE_URL,
     supabaseAnonKey: parsed.data.VITE_SUPABASE_ANON_KEY,
+    useMocks: parsed.data.VITE_USE_MOCKS === "true",
   };
   return cached;
 }

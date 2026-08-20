@@ -8,6 +8,8 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
+  /** Optional, and a plain string: `env.public.ts` is what narrows it. */
+  readonly VITE_USE_MOCKS?: string;
 }
 
 interface ImportMeta {
