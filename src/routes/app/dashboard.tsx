@@ -98,7 +98,7 @@ function viewFor(state: PreviewState): DashboardView {
  */
 function isAllAged(summary: DashboardSummary): boolean {
   const oldest = summary.aging.find((segment) => segment.bucket === "90+");
-  return oldest !== undefined && oldest.share_pct === 100;
+  return oldest !== undefined && oldest.share_pct >= 99.5;
 }
 
 function DashboardPage() {
