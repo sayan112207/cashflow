@@ -6,7 +6,7 @@ Everything the Dashboard needs, and nothing it doesn't. Build only these tables 
 
 ## 1. Data model
 
-Five tables. `payments`, `chase_events`, `cadences`, and `messages` are **out of scope** — do not create them, do not stub them.
+Six tables. `payments`, `chase_events`, `cadences`, and `messages` are **out of scope** — do not create them, do not stub them. `chase_requests` is in scope: `POST /api/v1/chases` is an append to that table, not a no-op.
 
 ### `organisations`
 ```
@@ -68,7 +68,9 @@ amount_paid           numeric(14,2)  not null  default 0
 status                invoice_status  not null
 disputed_at           timestamptz
 promised_date         date
+promised_at           date                 -- day the promise was recorded; pause cap is measured from here
 promise_broken_count  int  not null  default 0
+last_promise_broken_at date                -- last date a promise was broken; feeds the reason string
 last_reminder_at      timestamptz
 reminder_count        int  not null  default 0
 
@@ -88,6 +90,20 @@ Index: `(org_id, status, due_date)`, `(org_id, priority_score DESC)`
 
 **Dates are plain `date`, evaluated in the org's timezone.** `days_overdue` is computed against today's date in `org.timezone`. Do not add timezone conversion to `due_date`. Someone will helpfully try; don't let them.
 
+### `chase_requests`
+
+Append-only. `POST /api/v1/chases` inserts one row per accepted invoice. No updates, no deletes. Sending the actual reminder is a later milestone.
+
+```
+id              UUID  PK
+org_id          UUID  FK organisations  not null
+invoice_id      UUID  FK invoices  not null
+requested_by    UUID  FK users  not null
+requested_at    timestamptz  not null  default now()
+```
+
+Index: `(org_id, requested_at DESC)`, `(invoice_id, requested_at DESC)`
+
 ---
 
 ## 2. Business rules — implement in `services/`, test each one
@@ -98,17 +114,19 @@ An invoice enters the chase queue only if **all** of these hold:
 
 ```python
 account.status == "Active"
-invoice.status in ("Open", "Partially paid")
+invoice.status in ("Open", "Partially paid") or promise_pause_expired(invoice)
 days_overdue > 0
 account has a contact where tier == "P0" and delivery_state != "bounced"
 ```
+
+`promise_pause_expired` is true when `status == "Promised"` and today's date (org timezone) is after `min(promised_date, promised_at + 45 days)`. Status stays `Promised`; eligibility is what puts it back in the queue. There is no nightly job that flips the status to `Open`.
 
 Explicitly excluded, with the reason each matters:
 
 | Excluded | Why |
 |---|---|
 | `status == "Disputed"` | A disputed invoice has no chase priority. Chasing it escalates a conflict. |
-| `status == "Promised"` **and** `promised_date >= today` | An active promise pauses chasing. See 2.2. |
+| `status == "Promised"` **and** the pause is still active | An active promise pauses chasing. See 2.2. |
 | account has no usable P0 | There is nobody to send to. The action would silently fail. |
 | `status in ("Paid", "Written off")` | Nothing owed. |
 | `status == "Not yet due"` | Nothing overdue. |
@@ -117,10 +135,11 @@ This filter lives in **one** function, `services/chase_queue.py::eligible_invoic
 
 ### 2.2 Promise handling
 
-- An active promise (`promised_date >= today`) pauses chasing but the invoice **stays out of the aged-debt bucket** even past 90 days. Do not bucket a live conversation as dead debt.
-- A promise more than 45 days out is accepted but the pause is **capped at 45 days**; after that the invoice re-enters the queue. An unbounded pause is a stalling tactic.
+- An active promise pauses chasing but the invoice **stays out of the aged-debt bucket** even past 90 days. Do not bucket a live conversation as dead debt. The pause is active while `today <= min(promised_date, promised_at + 45 days)`.
+- A promise more than 45 days out is accepted but the pause is **capped at 45 days from `promised_at`**; after that `promise_pause_expired` is true and the invoice re-enters the queue without a status change. An unbounded pause is a stalling tactic.
 - A promise date in the past is treated as immediate — no pause.
-- The latest promise supersedes earlier ones, but `promise_broken_count` accumulates. Three broken promises is a strong escalation signal and feeds the priority modifier.
+- The latest promise supersedes earlier ones (`promised_date` / `promised_at` are overwritten), but `promise_broken_count` accumulates. Three broken promises is a strong escalation signal and feeds the priority modifier.
+- A promise is broken the first day the pause is no longer active and the invoice is still unpaid. On that day, and only that day: increment `promise_broken_count` and set `last_promise_broken_at` to that date. Do not increment again on later nights. The reason string reads `last_promise_broken_at`, not `promised_date` — a newer promise would otherwise hide the broken one.
 
 ### 2.3 Priority score
 
@@ -163,10 +182,10 @@ Resolved from the dominant contributor, first match wins. These exact strings:
 
 | Condition | Reason |
 |---|---|
-| `promise_broken_count >= 1` | `Promise broken on {date:%-d %b}` |
+| `promise_broken_count >= 1` | `Promise broken on {last_promise_broken_at:%-d %b}` |
 | `reminder_count >= 2 and days_since_last_reminder > 7` | `Second reminder went unanswered` |
 | invoice is the largest outstanding in the queue | `Largest overdue balance, {days} days` |
-| `days_overdue` is 1–3 days short of 45 | `Crosses the 45-day mark tomorrow` |
+| `days_overdue == 44` | `Crosses the 45-day mark tomorrow` |
 | `days_overdue >= 60 and value_norm < 0.2` | `Small amount but {days} days old` |
 | `reminder_count == 0` | `Small balance, first reminder due` |
 | fallback | `{days} days overdue` |
@@ -285,7 +304,9 @@ test_eligibility_excludes_bounced_p0_only_contact
 test_eligibility_includes_partially_paid
 test_active_promise_pauses_chase
 test_promise_beyond_45_days_caps_pause
+test_expired_promise_reenters_queue_without_status_flip
 test_past_promise_date_does_not_pause
+test_broken_promise_increments_once_and_sets_last_promise_broken_at
 test_aging_buckets_sum_to_total_outstanding
 test_aging_includes_disputed_invoices
 test_priority_low_volume_org_uses_max_not_p95
