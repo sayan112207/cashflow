@@ -731,22 +731,126 @@ export function getMockAccountsList(): AccountsList {
 
 export function getMockAccountDetail(accountId: string): AccountDetail | undefined {
   const detail = mockStore.details[accountId];
-  return detail ? structuredClone(detail) : undefined;
+  if (detail) return structuredClone(detail);
+
+  const listItem = mockStore.list.items.find((item) => item.account_id === accountId);
+  if (!listItem) return undefined;
+  return synthesizeDetailFromListItem(listItem);
 }
 
 export function getMockAccountInvoices(accountId: string): AccountInvoices | undefined {
   const invoices = mockStore.invoices[accountId];
-  return invoices ? structuredClone(invoices) : undefined;
+  if (invoices) return structuredClone(invoices);
+
+  // Account exists but has no invoice fixture yet — empty groups, not a 404.
+  if (accountExists(accountId)) {
+    return { account_id: accountId, groups: [] };
+  }
+  return undefined;
+}
+
+function accountExists(accountId: string): boolean {
+  return (
+    accountId in mockStore.details ||
+    mockStore.list.items.some((item) => item.account_id === accountId)
+  );
+}
+
+/**
+ * List-only accounts still need a detail payload so row links work. Full tab
+ * fixtures (nine invoices, contacts, …) stay on Sharma / Kaveri / Bhavani.
+ */
+function synthesizeDetailFromListItem(item: AccountListItem): AccountDetail {
+  const currentCents = moneyToCents(item.outstanding) - moneyToCents(item.overdue);
+  const current = centsToMoney(currentCents < 0n ? 0n : currentCents);
+  const overdue = item.overdue;
+  const total = Number(item.outstanding);
+  const share = (amount: string) =>
+    total > 0 ? Math.round((Number(amount) / total) * 1000) / 10 : 0;
+
+  return {
+    account_id: item.account_id,
+    name: item.name,
+    outstanding: item.outstanding,
+    overdue: item.overdue,
+    open_count: item.open_count,
+    oldest_overdue_days: item.oldest_overdue_days,
+    avg_days_late: item.avg_days_late,
+    chase_status: item.chase_status,
+    status_label: item.status_label,
+    header_status: headerStatusFor(item),
+    last_synced_at: SYNCED_TWO_DAYS_AGO,
+    updated_at: UPDATED_AT,
+    aging: [
+      { bucket: "Not yet due", amount: current, share_pct: share(current) },
+      { bucket: "1–30", amount: "0.00", share_pct: 0 },
+      { bucket: "31–60", amount: overdue, share_pct: share(overdue) },
+      { bucket: "61–90", amount: "0.00", share_pct: 0 },
+      { bucket: "90+", amount: "0.00", share_pct: 0 },
+    ],
+    settings: {
+      default_credit_days: 30,
+      currency: "INR",
+      tds_section: "None",
+      tds_rate: 0,
+      paused_at: item.chase_status === "paused" ? SYNCED_TWO_DAYS_AGO : null,
+      pause_reason: item.chase_status === "paused" ? "Paused" : null,
+      paused_until: null,
+      owner_user_id: USER_IDS.priya,
+      owner_name: "Priya Nair",
+      notes: null,
+    },
+  };
+}
+
+function headerStatusFor(item: AccountListItem): string {
+  switch (item.chase_status) {
+    case "bounced_p0":
+      return "Chasing paused — email bouncing";
+    case "no_p0":
+      return "Can't chase — no primary contact";
+    case "paused":
+      return "Chasing paused";
+    case "active":
+      return "Active";
+  }
+}
+
+function moneyToCents(value: string): bigint {
+  const [rupees, paise = "0"] = value.split(".");
+  return BigInt(rupees ?? "0") * 100n + BigInt(paise.padEnd(2, "0").slice(0, 2));
+}
+
+function centsToMoney(cents: bigint): string {
+  const sign = cents < 0n ? "-" : "";
+  const abs = cents < 0n ? -cents : cents;
+  const rupees = abs / 100n;
+  const paise = abs % 100n;
+  return `${sign}${rupees}.${paise.toString().padStart(2, "0")}`;
 }
 
 export function getMockAccountContacts(accountId: string): AccountContacts | undefined {
   const contacts = mockStore.contacts[accountId];
-  return contacts ? structuredClone(contacts) : undefined;
+  if (contacts) return structuredClone(contacts);
+  if (accountExists(accountId)) {
+    return {
+      account_id: accountId,
+      updated_at: UPDATED_AT,
+      p1_after_days: 21,
+      p2_after_days: 45,
+      contacts: [],
+    };
+  }
+  return undefined;
 }
 
 export function getMockAccountPayments(accountId: string): AccountPayments | undefined {
   const payments = mockStore.payments[accountId];
-  return payments ? structuredClone(payments) : undefined;
+  if (payments) return structuredClone(payments);
+  if (accountExists(accountId)) {
+    return { account_id: accountId, unapplied_total: "0.00", items: [] };
+  }
+  return undefined;
 }
 
 export function getMockAccountActivity(
@@ -754,9 +858,14 @@ export function getMockAccountActivity(
   limit?: number,
 ): AccountActivity | undefined {
   const activity = mockStore.activity[accountId];
-  if (!activity) return undefined;
-  const items = limit === undefined ? activity.items : activity.items.slice(0, limit);
-  return structuredClone({ account_id: activity.account_id, items });
+  if (activity) {
+    const items = limit === undefined ? activity.items : activity.items.slice(0, limit);
+    return structuredClone({ account_id: activity.account_id, items });
+  }
+  if (accountExists(accountId)) {
+    return { account_id: accountId, items: [] };
+  }
+  return undefined;
 }
 
 function bumpUpdatedAt(): string {

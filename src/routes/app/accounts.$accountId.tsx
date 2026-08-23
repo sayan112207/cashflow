@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useId, useRef, type KeyboardEvent } from "react";
 
 import { AgingBar } from "@/components/app/AgingBar";
+import { AccountContactsPanel } from "@/components/app/AccountContactsPanel";
 import { AccountInvoicesPanel } from "@/components/app/AccountInvoicesPanel";
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
@@ -98,6 +99,7 @@ function AccountDetailPage() {
       <AccountHeaderCard detail={detail} />
       <AgingBar segments={detail.aging} />
       <AccountDetailTabs
+        accountId={accountId}
         tab={tab}
         onTabChange={setTab}
         invoices={{
@@ -194,10 +196,12 @@ function metadataLine(detail: AccountDetail): string {
 }
 
 function AccountDetailTabs({
+  accountId,
   tab,
   onTabChange,
   invoices,
 }: {
+  accountId: string;
   tab: AccountDetailTab;
   onTabChange: (tab: AccountDetailTab) => void;
   invoices: {
@@ -294,7 +298,12 @@ function AccountDetailTabs({
                 onRetry={invoices.onRetry}
               />
             ) : null}
-            {selected && item.id !== "invoices" ? <div className="min-h-40" /> : null}
+            {selected && item.id === "contacts" ? (
+              <AccountContactsPanel accountId={accountId} />
+            ) : null}
+            {selected && item.id !== "invoices" && item.id !== "contacts" ? (
+              <div className="min-h-40" />
+            ) : null}
           </div>
         );
       })}

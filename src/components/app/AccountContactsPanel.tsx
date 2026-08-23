@@ -1,0 +1,479 @@
+import { useQuery } from "@tanstack/react-query";
+import { MoreHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { AppButton } from "@/components/app/AppButton";
+import { AppSkeleton } from "@/components/app/AppSkeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { formatCalendarDaysSince } from "@/lib/format";
+import {
+  useDeleteAccountContact,
+  useUpdateAccountContact,
+} from "@/lib/queries/account-contacts";
+import type {
+  AccountContact,
+  AccountContacts,
+  ContactLanguage,
+  ContactTier,
+  UpdateContactBody,
+} from "@/lib/schemas/accounts";
+import {
+  AccountsApiError,
+  accountsQueryKeys,
+  getAccountContacts,
+} from "@/lib/services/accounts";
+import { cn } from "@/lib/utils";
+
+const TIERS: {
+  id: ContactTier;
+  heading: string;
+  description: string;
+}[] = [
+  {
+    id: "P0",
+    heading: "P0 — PRIMARY",
+    description: "Receives every reminder from day one",
+  },
+  {
+    id: "P1",
+    heading: "P1 — ESCALATION",
+    description: "Joins the thread when an invoice ages",
+  },
+  {
+    id: "P2",
+    heading: "P2 — FINAL ESCALATION",
+    description: "Last step before formal action",
+  },
+];
+
+const LANGUAGE_OPTIONS: { value: ContactLanguage; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "hi", label: "Hindi" },
+  { value: "ta", label: "Tamil" },
+  { value: "te", label: "Telugu" },
+  { value: "mr", label: "Marathi" },
+  { value: "gu", label: "Gujarati" },
+  { value: "bn", label: "Bengali" },
+  { value: "kn", label: "Kannada" },
+];
+
+type AccountContactsPanelProps = {
+  accountId: string;
+};
+
+export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
+  const contactsQuery = useQuery({
+    queryKey: accountsQueryKeys.contacts(accountId),
+    queryFn: () => getAccountContacts(accountId),
+    retry: false,
+  });
+
+  const updateContact = useUpdateAccountContact(accountId);
+  const deleteContact = useDeleteAccountContact(accountId);
+
+  if (contactsQuery.isPending) {
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading contacts">
+        <AppSkeleton className="h-32 w-full" />
+        <AppSkeleton className="h-32 w-full" />
+        <AppSkeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (contactsQuery.isError) {
+    const message =
+      contactsQuery.error instanceof AccountsApiError
+        ? contactsQuery.error.message
+        : "Couldn't load contacts.";
+    return (
+      <div className="flex flex-col items-start gap-3 py-6">
+        <p className="text-body font-semibold text-fg">{message}</p>
+        <AppButton
+          variant="secondary"
+          onClick={() => {
+            void contactsQuery.refetch();
+          }}
+        >
+          Retry
+        </AppButton>
+      </div>
+    );
+  }
+
+  const data = contactsQuery.data;
+  if (!data) return null;
+
+  return (
+    <ContactsLadder
+      data={data}
+      onUpdate={(contactId, body) => {
+        updateContact.mutate({
+          contactId,
+          body,
+          ifMatch: data.updated_at,
+        });
+      }}
+      onDelete={(contactId) => {
+        deleteContact.mutate({
+          contactId,
+          ifMatch: data.updated_at,
+        });
+      }}
+    />
+  );
+}
+
+function ContactsLadder({
+  data,
+  onUpdate,
+  onDelete,
+}: {
+  data: AccountContacts;
+  onUpdate: (contactId: string, body: UpdateContactBody) => void;
+  onDelete: (contactId: string) => void;
+}) {
+  const [p1Days, setP1Days] = useState(data.p1_after_days);
+  const [p2Days, setP2Days] = useState(data.p2_after_days);
+
+  useEffect(() => {
+    setP1Days(data.p1_after_days);
+    setP2Days(data.p2_after_days);
+  }, [data.p1_after_days, data.p2_after_days]);
+
+  const escalationInvalid = p2Days <= p1Days;
+  const hasUsableP0 = data.contacts.some((c) => c.tier === "P0" && !c.do_not_contact);
+  const bouncedP0 = data.contacts.find(
+    (c) => c.tier === "P0" && !c.do_not_contact && c.delivery_state === "bounced",
+  );
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-8">
+        {TIERS.map((tier) => {
+          const tierContacts = data.contacts.filter((c) => c.tier === tier.id);
+          return (
+            <section key={tier.id} className="space-y-3">
+              <div>
+                <h2 className="text-section font-bold tracking-tight text-fg">{tier.heading}</h2>
+                <p className="mt-1 text-prose font-normal text-fg-muted">{tier.description}</p>
+              </div>
+
+              {tier.id === "P0" && bouncedP0 ? (
+                <BounceWarningStrip contact={bouncedP0} />
+              ) : null}
+
+              {tier.id === "P0" && !hasUsableP0 ? (
+                <div className="rounded-card border border-danger-edge bg-danger-tint p-4">
+                  <p className="text-body font-semibold text-fg">
+                    No primary contact. This account can't be chased.
+                  </p>
+                  <div className="mt-3">
+                    <AppButton variant="primary">Add a contact</AppButton>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-3">
+                {tierContacts.map((contact) => (
+                  <ContactCard
+                    key={contact.contact_id}
+                    contact={contact}
+                    onUpdate={onUpdate}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+
+              <AppButton variant="secondary">+ Add contact</AppButton>
+            </section>
+          );
+        })}
+      </div>
+
+      <div className="space-y-4 rounded-card bg-subtle p-5">
+        <p className="text-body font-semibold text-fg">
+          Bring in P1 after{" "}
+          <label className="inline-flex items-center gap-2">
+            <span className="sr-only">P1 after days overdue</span>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={p1Days}
+              onChange={(event) => setP1Days(Number(event.target.value))}
+              className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum"
+            />
+          </label>{" "}
+          days overdue
+        </p>
+        <p className="text-body font-semibold text-fg">
+          Bring in P2 after{" "}
+          <label className="inline-flex items-center gap-2">
+            <span className="sr-only">P2 after days overdue</span>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={p2Days}
+              onChange={(event) => setP2Days(Number(event.target.value))}
+              className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum"
+            />
+          </label>{" "}
+          days overdue
+        </p>
+        {escalationInvalid ? (
+          <p className="text-prose font-semibold text-danger">P2 must come after P1.</p>
+        ) : null}
+
+        <div role="status" className="text-prose font-normal text-fg-muted">
+          {escalationPreview(data.contacts, p1Days, p2Days)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BounceWarningStrip({ contact }: { contact: AccountContact }) {
+  const days = contact.last_bounced_at
+    ? formatCalendarDaysSince(contact.last_bounced_at)
+    : Number.NaN;
+  const ago =
+    Number.isFinite(days) && days >= 0
+      ? days === 0
+        ? "today"
+        : days === 1
+          ? "1 day ago"
+          : `${days} days ago`
+      : "recently";
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-danger-edge bg-danger-tint px-4 py-3">
+      <p className="text-body font-semibold text-fg">
+        <span className="font-bold">{contact.name}'s email is bouncing.</span> Nothing has
+        reached this account since {ago}.
+      </p>
+      <AppButton variant="secondary">Replace contact</AppButton>
+    </div>
+  );
+}
+
+function ContactCard({
+  contact,
+  onUpdate,
+  onDelete,
+}: {
+  contact: AccountContact;
+  onUpdate: (contactId: string, body: UpdateContactBody) => void;
+  onDelete: (contactId: string) => void;
+}) {
+  const [dncReason, setDncReason] = useState(contact.dnc_reason ?? "");
+
+  return (
+    <article className="rounded-card border border-hairline bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-body font-semibold text-fg">
+            {contact.name}
+            {contact.designation ? (
+              <span className="text-fg-muted"> · {contact.designation}</span>
+            ) : null}
+          </p>
+          <p className="mt-1 text-prose font-normal text-fg-muted">
+            {[contact.email, contact.phone].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <label className="flex items-center gap-2 text-prose font-semibold text-fg-muted">
+            <span className="sr-only">Tier for {contact.name}</span>
+            <select
+              aria-label={`Tier for ${contact.name}`}
+              value={contact.tier}
+              onChange={(event) =>
+                onUpdate(contact.contact_id, {
+                  tier: event.target.value as ContactTier,
+                })
+              }
+              className="rounded-input border border-stroke bg-card px-2 py-1 text-prose font-semibold text-fg"
+            >
+              <option value="P0">P0</option>
+              <option value="P1">P1</option>
+              <option value="P2">P2</option>
+            </select>
+          </label>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center rounded-nav text-fg-soft hover:bg-hovered hover:text-fg"
+                aria-label={`Actions for ${contact.name}`}
+              >
+                <MoreHorizontal className="size-4" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-card border-hairline bg-card shadow-overlay">
+              {(["P0", "P1", "P2"] as const).map((tier) => (
+                <DropdownMenuItem
+                  key={tier}
+                  disabled={contact.tier === tier}
+                  className="cursor-pointer text-body font-semibold focus:bg-hovered"
+                  onSelect={() => onUpdate(contact.contact_id, { tier })}
+                >
+                  Move to {tier}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                className="cursor-pointer text-body font-semibold text-danger focus:bg-hovered"
+                onSelect={() => onDelete(contact.contact_id)}
+              >
+                Remove contact
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <ChannelSwitch
+          label="Email"
+          name={contact.name}
+          checked={contact.channel_email}
+          onCheckedChange={(checked) =>
+            onUpdate(contact.contact_id, { channel_email: checked })
+          }
+        />
+        <ChannelSwitch
+          label="WhatsApp"
+          name={contact.name}
+          checked={contact.channel_whatsapp}
+          onCheckedChange={(checked) =>
+            onUpdate(contact.contact_id, { channel_whatsapp: checked })
+          }
+        />
+        <ChannelSwitch
+          label="SMS"
+          name={contact.name}
+          checked={contact.channel_sms}
+          onCheckedChange={(checked) =>
+            onUpdate(contact.contact_id, { channel_sms: checked })
+          }
+        />
+        <ChannelSwitch
+          label="Always CC"
+          name={contact.name}
+          checked={contact.always_cc}
+          onCheckedChange={(checked) =>
+            onUpdate(contact.contact_id, { always_cc: checked })
+          }
+        />
+        <ChannelSwitch
+          label="Do not contact"
+          name={contact.name}
+          checked={contact.do_not_contact}
+          onCheckedChange={(checked) =>
+            onUpdate(contact.contact_id, {
+              do_not_contact: checked,
+              dnc_reason: checked ? dncReason || "No reason given" : null,
+            })
+          }
+        />
+      </div>
+
+      {contact.do_not_contact ? (
+        <label className="mt-3 block text-prose font-semibold text-fg-muted">
+          Reason
+          <input
+            value={dncReason}
+            onChange={(event) => setDncReason(event.target.value)}
+            onBlur={() =>
+              onUpdate(contact.contact_id, {
+                do_not_contact: true,
+                dnc_reason: dncReason || "No reason given",
+              })
+            }
+            className="mt-1 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg"
+          />
+        </label>
+      ) : null}
+
+      <label className="mt-3 flex items-center gap-2 text-prose font-semibold text-fg-muted">
+        Language
+        <select
+          aria-label={`Language for ${contact.name}`}
+          value={contact.language}
+          onChange={(event) =>
+            onUpdate(contact.contact_id, {
+              language: event.target.value as ContactLanguage,
+            })
+          }
+          className="rounded-input border border-stroke bg-card px-2 py-1 text-prose font-semibold text-fg"
+        >
+          {LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </article>
+  );
+}
+
+function ChannelSwitch({
+  label,
+  name,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  name: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={`${label} for ${name}`}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "rounded-pill px-3 py-1.5 text-prose font-semibold transition-colors duration-150",
+        checked ? "bg-accent-tint text-accent" : "bg-alt text-fg-soft",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function escalationPreview(
+  contacts: readonly AccountContact[],
+  p1Days: number,
+  p2Days: number,
+): string {
+  const p0 = contacts.find((c) => c.tier === "P0" && !c.do_not_contact);
+  const p1 = contacts.find((c) => c.tier === "P1" && !c.do_not_contact);
+  const p2 = contacts.find((c) => c.tier === "P2" && !c.do_not_contact);
+
+  const first = p0 ? firstName(p0.name) : "Primary";
+  const parts = [`${first} gets the first reminder.`];
+  if (p1) parts.push(`${firstName(p1.name)} joins at day ${p1Days}.`);
+  if (p2) parts.push(`${firstName(p2.name)} joins at day ${p2Days}.`);
+  return parts.join(" ");
+}
+
+function firstName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts[0] === "Mr." || parts[0] === "Mrs." || parts[0] === "Ms.") {
+    return parts.slice(0, 2).join(" ");
+  }
+  return parts[0] ?? fullName;
+}

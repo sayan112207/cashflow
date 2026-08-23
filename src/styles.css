@@ -170,6 +170,28 @@
   --ring: var(--brand-deep);
 }
 
+/*
+ * Product-app palette, scoped.
+ *
+ * app-tokens.css is imported at the top so its tokens generate utilities. Five
+ * of its names — page, card, accent, danger, warn — are also landing tokens.
+ * The @theme inline block above is declared later, so it wins for those five
+ * globally and the marketing pages keep their palette.
+ *
+ * This class re-points the raw variables those utilities compile down to, so
+ * inside the app shell they resolve to the app values instead.
+ *
+ * Note --accent: the landing (and shadcn) treat it as a neutral hover surface,
+ * the app palette as brand green. Use bg-hovered for neutral hovers here.
+ */
+.app-theme {
+  --page: #fcfcfa;
+  --card: #ffffff;
+  --accent: #087a52;
+  --danger: #b4433a;
+  --warn: #7e6300;
+}
+
 @layer base {
   * {
     box-sizing: border-box;

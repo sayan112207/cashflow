@@ -131,7 +131,7 @@ function AccountsPage() {
             to="/app/accounts/$accountId"
             params={{ accountId: row.account_id }}
             title={row.name}
-            className="truncate text-accent hover:text-accent-hover"
+            className="truncate font-semibold text-fg underline-offset-2 hover:text-accent hover:underline"
           >
             {row.name}
           </Link>
