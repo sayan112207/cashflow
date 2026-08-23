@@ -18,6 +18,7 @@ import {
   formatINR,
   formatLongDate,
   formatTimeOfDay,
+  isZeroMoney,
 } from "@/lib/format";
 import type { ChaseQueue, ChaseQueueItem, DashboardSummary } from "@/lib/schemas/dashboard";
 import {
@@ -93,12 +94,19 @@ function viewFor(state: PreviewState): DashboardView {
 
 /**
  * Spec §6: an empty queue is "everything is 90+" when that bucket holds the
- * whole book. `share_pct` is the signal — comparing money strings would be
- * domain logic the frontend is not allowed to do.
+ * whole book. `share_pct` is rounded to one decimal, so 100 is not a reliable
+ * signal — a fully aged book can arrive as 99.9 and the cheerful empty copy
+ * would then claim the book is current.
+ *
+ * Every other bucket being zero-money is the same fact without the rounding.
+ * A 90+ of zero is an empty book, not an aged one.
  */
 function isAllAged(summary: DashboardSummary): boolean {
   const oldest = summary.aging.find((segment) => segment.bucket === "90+");
-  return oldest !== undefined && oldest.share_pct >= 99.5;
+  if (oldest === undefined || isZeroMoney(oldest.amount)) return false;
+  return summary.aging.every(
+    (segment) => segment.bucket === "90+" || isZeroMoney(segment.amount),
+  );
 }
 
 function DashboardPage() {
@@ -369,7 +377,10 @@ function ChaseNowSection({
       ) : emptyKind === "aged" ? (
         <EmptyAged />
       ) : (
-        <ChaseTable items={queue.items} />
+        <ChaseTable
+          key={queue.items.map((item) => item.invoice_id).join(",")}
+          items={queue.items}
+        />
       )}
     </section>
   );
