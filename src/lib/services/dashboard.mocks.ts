@@ -121,7 +121,7 @@ export const chaseQueueFixture: ChaseQueue = {
       account_name: "Anand & Sons Traders",
       invoice_number: "INV-1187",
       amount_outstanding: "95000.00",
-      days_overdue: 12,
+      days_overdue: 44,
       priority_band: "Chase now",
       priority_reason: "Crosses the 45-day mark tomorrow",
     },
