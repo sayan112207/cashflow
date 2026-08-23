@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { accountListItemsFixture, LONG_ACCOUNT_NAME } from "@/lib/services/accounts.mocks";
+import {
+  accountListItemsFixture,
+  LONG_ACCOUNT_NAME,
+  sharmaDetailFixture,
+} from "@/lib/services/accounts.mocks";
 
 function moneyToCents(value: string): bigint {
   const [rupees, paise = "0"] = value.split(".");
@@ -34,5 +38,25 @@ describe("accounts list fixtures", () => {
 
   test("overflow account name is exactly 60 characters", () => {
     expect(LONG_ACCOUNT_NAME).toHaveLength(60);
+  });
+});
+
+describe("Sharma Traders detail fixtures", () => {
+  test("aging buckets sum to outstanding and overdue equals total minus Not yet due", () => {
+    const agingSum = sharmaDetailFixture.aging.reduce(
+      (sum, segment) => sum + moneyToCents(segment.amount),
+      0n,
+    );
+    expect(centsToMoney(agingSum)).toBe(sharmaDetailFixture.outstanding);
+
+    const notYetDue = sharmaDetailFixture.aging.find(
+      (segment) => segment.bucket === "Not yet due",
+    );
+    if (!notYetDue) {
+      throw new Error("missing Not yet due bucket");
+    }
+    const expectedOverdue =
+      moneyToCents(sharmaDetailFixture.outstanding) - moneyToCents(notYetDue.amount);
+    expect(centsToMoney(expectedOverdue)).toBe(sharmaDetailFixture.overdue);
   });
 });

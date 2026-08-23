@@ -59,6 +59,40 @@ export function formatDays(n: number): string {
 const DISPLAY_LOCALE = "en-IN";
 const DISPLAY_TIME_ZONE = "Asia/Kolkata";
 
+const calendarDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: DISPLAY_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Whole calendar days between an ISO timestamp and `now` in Asia/Kolkata. */
+export function formatCalendarDaysSince(iso: string, now: Date = new Date()): number {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return Number.NaN;
+
+  const today = calendarDayFormatter.format(now);
+  const thatDay = calendarDayFormatter.format(then);
+  const todayUtc = Date.parse(`${today}T00:00:00Z`);
+  const thatUtc = Date.parse(`${thatDay}T00:00:00Z`);
+  return Math.round((todayUtc - thatUtc) / 86_400_000);
+}
+
+/** Spec §2 sync copy: "Data synced 2 days ago". */
+export function formatDataSyncedLabel(iso: string, now: Date = new Date()): string {
+  const days = formatCalendarDaysSince(iso, now);
+  if (!Number.isFinite(days) || days < 0) return "Data sync unknown";
+  if (days === 0) return "Data synced today";
+  if (days === 1) return "Data synced 1 day ago";
+  return `Data synced ${days} days ago`;
+}
+
+/** Spec §2: sync older than 7 days is the stale-data variant. */
+export function isSyncStale(iso: string, now: Date = new Date()): boolean {
+  const days = formatCalendarDaysSince(iso, now);
+  return Number.isFinite(days) && days >= 7;
+}
+
 const longDateFormatter = new Intl.DateTimeFormat(DISPLAY_LOCALE, {
   weekday: "long",
   day: "numeric",

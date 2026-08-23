@@ -93,6 +93,19 @@ export const accountsSearchSchema = z.object({
   dir: accountsSortDirSchema.default("desc").catch("desc"),
 });
 
+export const accountDetailTabSchema = z.enum([
+  "invoices",
+  "contacts",
+  "payments",
+  "activity",
+  "settings",
+]);
+
+/** URL search for `/app/accounts/$accountId`. */
+export const accountDetailSearchSchema = z.object({
+  tab: accountDetailTabSchema.default("invoices").catch("invoices"),
+});
+
 function agingSlot<B extends z.infer<typeof agingBucketSchema>>(bucket: B) {
   return z.object({
     bucket: z.literal(bucket),
@@ -325,6 +338,8 @@ export type AccountsListFilter = z.infer<typeof accountsListFilterSchema>;
 export type AccountsSortColumn = z.infer<typeof accountsSortColumnSchema>;
 export type AccountsSortDir = z.infer<typeof accountsSortDirSchema>;
 export type AccountsSearch = z.infer<typeof accountsSearchSchema>;
+export type AccountDetailTab = z.infer<typeof accountDetailTabSchema>;
+export type AccountDetailSearch = z.infer<typeof accountDetailSearchSchema>;
 export type AccountListItem = z.infer<typeof accountListItemSchema>;
 export type AccountsList = z.infer<typeof accountsListSchema>;
 export type AccountSettings = z.infer<typeof accountSettingsSchema>;
