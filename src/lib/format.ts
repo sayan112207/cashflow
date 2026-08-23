@@ -87,6 +87,23 @@ export function formatDataSyncedLabel(iso: string, now: Date = new Date()): stri
   return `Data synced ${days} days ago`;
 }
 
+/** Spec §6 activity timestamps: "9 days ago", "2 months ago". */
+export function formatRelativeTimestamp(iso: string, now: Date = new Date()): string {
+  const days = formatCalendarDaysSince(iso, now);
+  if (!Number.isFinite(days) || days < 0) return "—";
+  if (days === 0) return "today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+
+  const months = Math.round(days / 30);
+  if (months === 1) return "1 month ago";
+  if (months < 12) return `${months} months ago`;
+
+  const years = Math.round(days / 365);
+  if (years === 1) return "1 year ago";
+  return `${years} years ago`;
+}
+
 /** Spec §2: sync older than 7 days is the stale-data variant. */
 export function isSyncStale(iso: string, now: Date = new Date()): boolean {
   const days = formatCalendarDaysSince(iso, now);

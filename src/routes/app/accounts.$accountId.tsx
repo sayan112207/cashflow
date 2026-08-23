@@ -3,10 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useId, useRef, type KeyboardEvent } from "react";
 
 import { AgingBar } from "@/components/app/AgingBar";
+import { AccountActivityPanel } from "@/components/app/AccountActivityPanel";
 import { AccountContactsPanel } from "@/components/app/AccountContactsPanel";
 import { AccountInvoicesPanel } from "@/components/app/AccountInvoicesPanel";
+import { AccountPaymentsPanel } from "@/components/app/AccountPaymentsPanel";
+import { AccountSettingsPanel } from "@/components/app/AccountSettingsPanel";
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
+import { PauseChaseControls } from "@/components/app/PauseChaseControls";
 import { PRODUCT_NAME } from "@/lib/brand";
 import {
   formatCalendarDaysSince,
@@ -96,10 +100,12 @@ function AccountDetailPage() {
 
   return (
     <div className="space-y-8">
-      <AccountHeaderCard detail={detail} />
+      <AccountHeaderCard accountId={accountId} detail={detail} />
       <AgingBar segments={detail.aging} />
       <AccountDetailTabs
         accountId={accountId}
+        accountName={detail.name}
+        detail={detail}
         tab={tab}
         onTabChange={setTab}
         invoices={{
@@ -116,7 +122,13 @@ function AccountDetailPage() {
   );
 }
 
-function AccountHeaderCard({ detail }: { detail: AccountDetail }) {
+function AccountHeaderCard({
+  accountId,
+  detail,
+}: {
+  accountId: string;
+  detail: AccountDetail;
+}) {
   const stale = isSyncStale(detail.last_synced_at);
   const daysSince = formatCalendarDaysSince(detail.last_synced_at);
 
@@ -133,7 +145,7 @@ function AccountHeaderCard({ detail }: { detail: AccountDetail }) {
           />
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <AppButton variant="secondary">Pause chasing</AppButton>
+          <PauseChaseControls accountId={accountId} detail={detail} />
           <AppButton variant="text">Edit</AppButton>
         </div>
       </div>
@@ -197,11 +209,15 @@ function metadataLine(detail: AccountDetail): string {
 
 function AccountDetailTabs({
   accountId,
+  accountName,
+  detail,
   tab,
   onTabChange,
   invoices,
 }: {
   accountId: string;
+  accountName: string;
+  detail: AccountDetail;
   tab: AccountDetailTab;
   onTabChange: (tab: AccountDetailTab) => void;
   invoices: {
@@ -216,9 +232,9 @@ function AccountDetailTabs({
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   function focusTab(index: number) {
-    const tab = TABS[index];
-    if (!tab) return;
-    onTabChange(tab.id);
+    const tabItem = TABS[index];
+    if (!tabItem) return;
+    onTabChange(tabItem.id);
     queueMicrotask(() => {
       tabRefs.current[index]?.focus();
     });
@@ -301,8 +317,14 @@ function AccountDetailTabs({
             {selected && item.id === "contacts" ? (
               <AccountContactsPanel accountId={accountId} />
             ) : null}
-            {selected && item.id !== "invoices" && item.id !== "contacts" ? (
-              <div className="min-h-40" />
+            {selected && item.id === "payments" ? (
+              <AccountPaymentsPanel accountId={accountId} accountName={accountName} />
+            ) : null}
+            {selected && item.id === "activity" ? (
+              <AccountActivityPanel accountId={accountId} />
+            ) : null}
+            {selected && item.id === "settings" ? (
+              <AccountSettingsPanel accountId={accountId} detail={detail} />
             ) : null}
           </div>
         );

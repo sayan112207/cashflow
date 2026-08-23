@@ -319,6 +319,39 @@ export const updateSettingsBodySchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+/**
+ * Settings tab form values. Pause fields are edited here but go through the
+ * pause/resume endpoints — they are not part of `updateSettingsBodySchema`.
+ */
+export const accountSettingsFormSchema = z
+  .object({
+    default_credit_days: z.number().int().positive(),
+    currency: z.literal("INR"),
+    tds_section: tdsSectionSchema,
+    tds_rate: z.number().min(0).max(100),
+    paused: z.boolean(),
+    pause_reason: z.string(),
+    paused_until: z.string(),
+    owner_user_id: z.string().uuid().nullable(),
+    notes: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.paused && value.pause_reason.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add a reason before pausing.",
+        path: ["pause_reason"],
+      });
+    }
+    if (value.paused_until.length > 0 && !isoDate.safeParse(value.paused_until).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Use a valid date.",
+        path: ["paused_until"],
+      });
+    }
+  });
+
 export const pauseAccountBodySchema = z.object({
   reason: z.string().min(1),
   until: isoDate.optional(),
@@ -357,5 +390,6 @@ export type CreateContactBody = z.infer<typeof createContactBodySchema>;
 export type UpdateContactBody = z.infer<typeof updateContactBodySchema>;
 export type UpdateEscalationBody = z.infer<typeof updateEscalationBodySchema>;
 export type UpdateSettingsBody = z.infer<typeof updateSettingsBodySchema>;
+export type AccountSettingsFormValues = z.infer<typeof accountSettingsFormSchema>;
 export type PauseAccountBody = z.infer<typeof pauseAccountBodySchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;
