@@ -72,6 +72,7 @@ export const accountsSortColumnSchema = z.enum([
   "open_count",
   "oldest_overdue_days",
   "avg_days_late",
+  "contacts",
   "chase_status",
 ]);
 

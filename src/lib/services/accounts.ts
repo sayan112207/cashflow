@@ -154,11 +154,8 @@ function filterMockList(list: AccountsList, params: AccountsListParams): Account
   const dir = params.dir ?? "desc";
   const sort = params.sort ?? "outstanding";
   items = [...items].sort((a, b) => {
-    const left = sort === "name" ? a.name : a.outstanding;
-    const right = sort === "name" ? b.name : b.outstanding;
-    if (left < right) return dir === "asc" ? -1 : 1;
-    if (left > right) return dir === "asc" ? 1 : -1;
-    return 0;
+    const cmp = compareAccountRows(a, b, sort);
+    return dir === "asc" ? cmp : -cmp;
   });
 
   const outstandingCents = items.reduce((sum, item) => sum + moneyToCents(item.outstanding), 0n);
@@ -171,6 +168,49 @@ function filterMockList(list: AccountsList, params: AccountsListParams): Account
     filtered_overdue: centsToMoney(overdueCents),
     items,
   };
+}
+
+function compareAccountRows(
+  a: AccountsList["items"][number],
+  b: AccountsList["items"][number],
+  sort: string,
+): number {
+  switch (sort) {
+    case "name":
+      return a.name.localeCompare(b.name);
+    case "outstanding":
+      return moneyToCents(a.outstanding) < moneyToCents(b.outstanding)
+        ? -1
+        : moneyToCents(a.outstanding) > moneyToCents(b.outstanding)
+          ? 1
+          : 0;
+    case "overdue":
+      return moneyToCents(a.overdue) < moneyToCents(b.overdue)
+        ? -1
+        : moneyToCents(a.overdue) > moneyToCents(b.overdue)
+          ? 1
+          : 0;
+    case "open_count":
+      return a.open_count - b.open_count;
+    case "oldest_overdue_days":
+      return (a.oldest_overdue_days ?? -1) - (b.oldest_overdue_days ?? -1);
+    case "avg_days_late":
+      return (a.avg_days_late ?? -1) - (b.avg_days_late ?? -1);
+    case "contacts":
+      return contactSortKey(a.contacts).localeCompare(contactSortKey(b.contacts));
+    case "chase_status":
+      return a.chase_status.localeCompare(b.chase_status);
+    default:
+      return moneyToCents(a.outstanding) < moneyToCents(b.outstanding)
+        ? -1
+        : moneyToCents(a.outstanding) > moneyToCents(b.outstanding)
+          ? 1
+          : 0;
+  }
+}
+
+function contactSortKey(contacts: AccountsList["items"][number]["contacts"]): string {
+  return `${contacts.p0}:${contacts.p1}:${contacts.p2}`;
 }
 
 function moneyToCents(value: string): bigint {

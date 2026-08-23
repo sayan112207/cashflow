@@ -1,0 +1,129 @@
+/* src/styles/app-tokens.css
+ *
+ * Design tokens for the product app (Dashboard, Accounts, Invoices, …).
+ * Every value was computed against WCAG AA. Do not add, remove, or adjust one.
+ *
+ * These are Tailwind 4 @theme variables: each one generates utility classes.
+ * --color-page  →  bg-page, text-page, border-page
+ * --text-body   →  text-body
+ * --radius-card →  rounded-card
+ *
+ * That is the point. If a value isn't here, there is no class for it, and
+ * reaching for an arbitrary value like bg-[#087A52] becomes visible in review.
+ *
+ * Import this AFTER the existing globals so the landing page is unaffected.
+ */
+
+@theme {
+  /* ---------- Surfaces ---------- */
+  --color-page:        #FCFCFA;  /* app background */
+  --color-card:        #FFFFFF;
+  --color-subtle:      #F7F7F3;  /* sidebar, table headers, nested blocks */
+  --color-alt:         #F1F1EC;  /* neutral pills, skeleton bars */
+  --color-hovered:     #EFEFE9;  /* row and control hover */
+
+  /* ---------- Borders ---------- */
+  --color-hairline:    #E6E6E0;  /* default 1px */
+  --color-stroke:      #DCDCD4;  /* inputs, focused containers */
+
+  /* ---------- Foreground ---------- */
+  --color-fg:          #111111;
+  --color-fg-soft:     #686863;  /* body prose, descriptions */
+  --color-fg-muted:    #6E6E67;  /* labels, metadata — 5.14:1 on card */
+
+  /* ---------- Accent: actions, money received ---------- */
+  --color-accent:       #087A52;  /* filled buttons — white text = 5.36:1 */
+  --color-accent-hover: #0A6B49;
+  --color-accent-line:  #18A873;  /* DECORATIVE ONLY — nav edge, focus ring,
+                                     checkbox fill. Never text, never a fill. */
+  --color-accent-tint:  #E8F6EF;
+  --color-accent-edge:  #DCEEE5;
+  --color-accent-row:   #F3FAF6;  /* selected table row */
+
+  /* ---------- Danger: overdue, destructive, disputed ---------- */
+  --color-danger:       #B4433A;  /* 5.52:1 on card */
+  --color-danger-tint:  #FBEAEA;
+  --color-danger-edge:  #F2D6D4;
+
+  /* ---------- Warn: promised, approaching, stale ---------- */
+  --color-warn:         #7E6300;  /* 5.72:1 on card, 5.05:1 on alt */
+  --color-warn-tint:    #FBF3DC;
+  --color-warn-edge:    #F0E4C4;
+
+  /* ---------- Aging bar segments — decorative, never text ---------- */
+  --color-aging-none:   #DCDCD4;  /* Not yet due */
+  --color-aging-30:     #C7C7BF;
+  --color-aging-60:     #ABABA2;
+  --color-aging-90:     #868680;
+  --color-aging-over:   #B4433A;  /* 90+ */
+
+  /* ---------- Type: seven sizes, no others ---------- */
+  --text-metric:  28px;   /* metric value        · use with font-bold tracking-tight */
+  --text-title:   22px;   /* page title          · font-bold tracking-tight */
+  --text-section: 16px;   /* section heading     · font-bold tracking-tight */
+  --text-body:  13.5px;   /* body, cell, button, nav item · font-semibold */
+  --text-prose: 12.5px;   /* secondary prose, helper text · font-normal */
+  --text-pill:  11.5px;   /* badge label         · font-semibold */
+  --text-eyebrow:  11px;  /* eyebrow, column header · font-semibold uppercase tracking-[0.08em] */
+
+  /* ---------- Radii ---------- */
+  --radius-pill:  100px;  /* pills, chips, badges, filled buttons, avatars */
+  --radius-card:   12px;  /* cards, panels, modals */
+  --radius-input:  10px;  /* inputs, selects, textareas */
+  --radius-nav:     8px;  /* nav items */
+  --radius-check:   4px;  /* checkboxes, skeleton bars */
+
+  /* ---------- Elevation: modals and popovers only ---------- */
+  --shadow-overlay: 0 8px 24px rgb(17 17 17 / 0.10);
+}
+
+/* ---------- Spacing ----------
+ * Deliberately NOT redefined. Tailwind's default scale already gives exactly
+ * the eight steps this design uses:
+ *
+ *   p-1  4px   p-2  8px   p-3 12px   p-4 16px
+ *   p-5 20px   p-6 24px   p-8 32px   p-10 40px
+ *
+ * Use only those eight. Never p-7, p-9, p-11, or an arbitrary value.
+ */
+
+/* ---------- Base behaviour for app routes ----------
+ * Scoped to .app-shell so nothing here touches the landing page.
+ */
+
+.app-shell {
+  background: var(--color-page);
+  color: var(--color-fg);
+}
+
+/* Every numeral aligns. Non-negotiable in a financial product. */
+.app-shell table,
+.app-shell .tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mandatory on every focusable element inside the app.
+   `outline: none` may not appear anywhere in app code. */
+.app-shell :focus-visible {
+  outline: 2px solid var(--color-accent-line);
+  outline-offset: 2px;
+}
+
+/* A control revealed on hover must also appear on keyboard focus.
+   Hover-only is unreachable by keyboard. */
+.app-shell .row-action {
+  opacity: 0;
+}
+.app-shell tr:hover .row-action,
+.app-shell .row-action:focus-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
