@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 
 import type { ContactPip, ContactTier } from "@/lib/schemas/accounts";
+import { cn } from "@/lib/utils";
 
 const TIERS: readonly ContactTier[] = ["P0", "P1", "P2"];
 
@@ -42,7 +43,7 @@ export function ContactPips({ contacts }: ContactPipsProps) {
       {TIERS.map((tier) => {
         const state = contacts[PIP_KEY[tier]];
         return (
-          <li key={tier}>
+          <li key={tier} className="flex">
             <Pip tier={tier} state={state} />
           </li>
         );
@@ -53,6 +54,8 @@ export function ContactPips({ contacts }: ContactPipsProps) {
 
 function Pip({ tier, state }: { tier: ContactTier; state: ContactPip }) {
   const name = accessibleName(tier, state);
+  const box =
+    "inline-flex size-3.5 shrink-0 items-center justify-center rounded-check";
 
   if (state === "missing") {
     // Only a missing P0 is the danger ✕ — P1/P2 absence is a hollow pip.
@@ -62,7 +65,7 @@ function Pip({ tier, state }: { tier: ContactTier; state: ContactPip }) {
           role="img"
           aria-label={name}
           title={name}
-          className="inline-flex size-5 items-center justify-center rounded-check bg-danger text-pill font-semibold text-white"
+          className={cn(box, "bg-danger text-pill font-semibold text-white")}
         >
           <span aria-hidden="true">✕</span>
         </span>
@@ -73,20 +76,15 @@ function Pip({ tier, state }: { tier: ContactTier; state: ContactPip }) {
         role="img"
         aria-label={name}
         title={name}
-        className="inline-flex size-5 items-center justify-center rounded-check border border-stroke bg-card"
+        className={cn(box, "border border-stroke bg-transparent")}
       />
     );
   }
 
   if (state === "bounced") {
     return (
-      <span
-        role="img"
-        aria-label={name}
-        title={name}
-        className="relative inline-flex size-5 items-center justify-center rounded-check bg-danger"
-      >
-        <AlertTriangle aria-hidden="true" className="size-3 text-white" strokeWidth={2.5} />
+      <span role="img" aria-label={name} title={name} className={cn(box, "bg-danger")}>
+        <AlertTriangle aria-hidden="true" className="size-2.5 text-white" strokeWidth={2.5} />
       </span>
     );
   }
@@ -97,19 +95,12 @@ function Pip({ tier, state }: { tier: ContactTier; state: ContactPip }) {
         role="img"
         aria-label={name}
         title={name}
-        className="inline-flex size-5 items-center justify-center rounded-check border border-stroke bg-alt text-pill font-semibold text-fg-muted"
+        className={cn(box, "border border-stroke bg-alt text-pill font-semibold text-fg-muted")}
       >
         <span aria-hidden="true">✕</span>
       </span>
     );
   }
 
-  return (
-    <span
-      role="img"
-      aria-label={name}
-      title={name}
-      className="inline-flex size-5 rounded-check bg-fg"
-    />
-  );
+  return <span role="img" aria-label={name} title={name} className={cn(box, "bg-fg")} />;
 }

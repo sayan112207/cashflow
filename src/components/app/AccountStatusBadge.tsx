@@ -1,10 +1,9 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ChaseStatusLabel } from "@/lib/schemas/accounts";
 
 /**
- * Account chase-status label. Same Badge wrap as `PriorityBadge`, different
- * vocabulary — Active / Can't chase / Paused are not priority bands.
+ * Account chase-status label. Plain span — not the shared Badge primitive —
+ * so landing `badge` borders/radii don't box the cell.
  */
 const LABEL_CLASSES: Record<ChaseStatusLabel, string> = {
   Active: "bg-alt text-fg-soft",
@@ -14,14 +13,13 @@ const LABEL_CLASSES: Record<ChaseStatusLabel, string> = {
 
 export function AccountStatusBadge({ label }: { label: ChaseStatusLabel }) {
   return (
-    <Badge
-      variant="outline"
+    <span
       className={cn(
-        "rounded-pill border-transparent text-pill font-semibold",
+        "inline-flex items-center rounded-pill px-2.5 py-0.5 text-pill font-semibold",
         LABEL_CLASSES[label],
       )}
     >
       {label}
-    </Badge>
+    </span>
   );
 }

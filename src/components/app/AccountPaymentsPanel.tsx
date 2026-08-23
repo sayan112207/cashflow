@@ -89,36 +89,36 @@ function PaymentsTable({ data }: { data: AccountPayments }) {
         </div>
       ) : null}
 
-      <Table className="min-w-max border-separate border-spacing-0">
+      <Table className="min-w-max border-collapse">
         <TableHeader>
-          <TableRow className="border-hairline bg-subtle hover:bg-subtle">
+          <TableRow className="border-0 hover:bg-transparent">
             <TableHead
               scope="col"
-              className="h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
             >
               Date
             </TableHead>
             <TableHead
               scope="col"
-              className="h-auto px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
             >
               Amount
             </TableHead>
             <TableHead
               scope="col"
-              className="h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
             >
               Source
             </TableHead>
             <TableHead
               scope="col"
-              className="h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
             >
               Allocated to
             </TableHead>
             <TableHead
               scope="col"
-              className="h-auto px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
             >
               Unapplied
             </TableHead>
@@ -141,16 +141,20 @@ function PaymentRow({ payment }: { payment: AccountPayment }) {
       : payment.allocations.map((a) => a.invoice_number).join(", ");
 
   return (
-    <TableRow className="border-hairline hover:bg-hovered">
-      <TableCell className="px-3 py-3 text-body font-semibold text-fg">
+    <TableRow className="border-0 hover:bg-hovered">
+      <TableCell className="border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
         {formatShortDate(payment.received_on)}
       </TableCell>
-      <TableCell className="px-3 py-3 text-right text-body font-semibold text-fg tnum">
+      <TableCell className="border-b border-hairline px-3 py-3 text-right text-body font-semibold text-fg tnum">
         {formatINR(payment.amount)}
       </TableCell>
-      <TableCell className="px-3 py-3 text-body font-semibold text-fg">{payment.source}</TableCell>
-      <TableCell className="px-3 py-3 text-body font-semibold text-fg">{allocatedTo}</TableCell>
-      <TableCell className="px-3 py-3 text-right text-body font-semibold text-fg tnum">
+      <TableCell className="border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
+        {payment.source}
+      </TableCell>
+      <TableCell className="border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
+        {allocatedTo}
+      </TableCell>
+      <TableCell className="border-b border-hairline px-3 py-3 text-right text-body font-semibold text-fg tnum">
         {isZeroMoney(payment.unapplied) ? "—" : formatINR(payment.unapplied)}
       </TableCell>
     </TableRow>

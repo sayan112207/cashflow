@@ -69,56 +69,56 @@ export function AccountInvoicesPanel({
 
 function GroupedInvoicesTable({ groups }: { groups: readonly AccountInvoiceGroup[] }) {
   return (
-    <Table className="min-w-max border-separate border-spacing-0">
+    <Table className="min-w-max border-collapse">
       <TableHeader>
-        <TableRow className="border-hairline bg-subtle hover:bg-subtle">
+        <TableRow className="border-0 hover:bg-transparent">
           <TableHead
             scope="col"
-            className="h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+            className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
           >
             Invoice #
           </TableHead>
           <TableHead
             scope="col"
-            className="h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+            className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
           >
             Invoice date
           </TableHead>
           <TableHead
             scope="col"
-            className="h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+            className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
           >
             Due date
           </TableHead>
           <TableHead
             scope="col"
-            className="h-auto px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+            className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
           >
             Days overdue
           </TableHead>
           <TableHead
             scope="col"
-            className="h-auto px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+            className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
           >
             Amount
           </TableHead>
           <TableHead
             scope="col"
-            className="h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
+            className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
           >
             Status
           </TableHead>
-          <TableHead scope="col" className="h-auto px-3 py-3">
+          <TableHead scope="col" className="h-auto border-b border-hairline bg-subtle px-3 py-3">
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
       {groups.map((group) => (
         <TableBody key={group.bucket}>
-          <TableRow className="border-hairline bg-alt hover:bg-alt">
+          <TableRow className="border-0 bg-alt hover:bg-alt">
             <TableCell
               colSpan={7}
-              className="px-3 py-2 text-eyebrow font-semibold tracking-widest text-fg uppercase"
+              className="border-b border-hairline px-3 py-2 text-eyebrow font-semibold tracking-widest text-fg uppercase"
             >
               {groupHeaderLabel(group.bucket)} ⟶ {formatINR(group.subtotal)}
             </TableCell>
@@ -141,26 +141,26 @@ function InvoiceRow({ invoice }: { invoice: AccountInvoice }) {
   const chaseDisabled = invoice.chase_disabled_reason !== null;
 
   return (
-    <TableRow className="border-hairline hover:bg-hovered">
-      <TableCell className="whitespace-nowrap px-3 py-3 text-body font-semibold text-fg">
+    <TableRow className="border-0 hover:bg-hovered">
+      <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
         {invoice.number}
       </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-3 text-body font-semibold text-fg">
+      <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
         {formatShortDate(invoice.invoice_date)}
       </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-3 text-body font-semibold text-fg">
+      <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
         {formatShortDate(invoice.due_date)}
       </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-3 text-right text-body font-semibold">
+      <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-right text-body font-semibold">
         <DaysOverdue days={invoice.days_overdue} />
       </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-3 text-right text-body font-semibold text-fg tnum">
+      <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-right text-body font-semibold text-fg tnum">
         {formatINR(invoice.amount_outstanding)}
       </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-3 text-body font-semibold text-fg">
+      <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
         {invoice.status}
       </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-3">
+      <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3">
         <div className="flex items-center justify-end gap-1">
           <AppButton
             variant="text"

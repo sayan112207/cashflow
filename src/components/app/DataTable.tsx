@@ -73,29 +73,25 @@ type DataTableProps<Row> = {
  * primitive's own `overflow-auto` wrapper — adding a second one here would
  * nest two scrollers and the outer would never engage.
  *
- * `min-w-max` stops columns compressing: the table is as wide as its content,
- * and the wrapper scrolls when that is wider than the pane. Spec §9 names
- * 1100px as the breakpoint; there is no 1100px token, so this is content-driven
- * rather than a fake floor that would scroll a 1280px laptop for no reason.
- *
- * The shell's `min-w-0` is what lets the wrapper actually shrink so this
- * min-width can overflow.
+ * Borders live on cells, not the row: `border-collapse` + `tr { border-b }` is
+ * unreliable across browsers and was painting the header as a floating slab
+ * when paired with `border-separate`.
  *
  * Row height is padding-driven: the spec names a `--row-h` token that the
  * tokens file does not define, so `py-3` stands in at 12px.
  */
 export function DataTable<Row>({ columns, rows, rowKey, isRowSelected }: DataTableProps<Row>) {
   return (
-    <Table className="min-w-max border-separate border-spacing-0">
+    <Table className="min-w-max border-collapse">
       <TableHeader>
-        <TableRow className="border-hairline bg-subtle hover:bg-subtle">
+        <TableRow className="border-0 hover:bg-transparent">
           {columns.map((column) => (
             <TableHead
               key={column.id}
               scope="col"
               aria-sort={column.ariaSort}
               className={cn(
-                "h-auto px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase",
+                "h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase",
                 column.align === "right" && "text-right",
               )}
             >
@@ -112,8 +108,10 @@ export function DataTable<Row>({ columns, rows, rowKey, isRowSelected }: DataTab
               key={rowKey(row)}
               // A selected row keeps its tint while hovered. Swapping to the
               // neutral hover would read as "this row is no longer selected".
+              // Override ui/table's hover:bg-muted/50 (landing token) and
+              // border-b on the row — borders sit on cells instead.
               className={cn(
-                "border-hairline",
+                "border-0",
                 selected ? "bg-accent-row hover:bg-accent-row" : "hover:bg-hovered",
               )}
             >
@@ -121,7 +119,7 @@ export function DataTable<Row>({ columns, rows, rowKey, isRowSelected }: DataTab
                 <TableCell
                   key={column.id}
                   className={cn(
-                    "whitespace-nowrap px-3 py-3 text-body font-semibold text-fg",
+                    "whitespace-nowrap border-b border-hairline px-3 py-3 text-body font-semibold text-fg",
                     column.align === "right" && "text-right",
                   )}
                 >

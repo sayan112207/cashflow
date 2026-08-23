@@ -193,7 +193,7 @@ function AccountsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-title font-bold tracking-tight text-fg">Accounts</h1>
@@ -209,27 +209,29 @@ function AccountsPage() {
         </AppButton>
       </div>
 
-      <FilterBar
-        filters={filters}
-        filteredCount={listQuery.data?.filtered_count}
-        filteredOutstanding={listQuery.data?.filtered_outstanding}
-        onToggle={toggleFilter}
-        onClear={clearFilters}
-        onSelectAll={clearFilters}
-      />
+      <div className="space-y-4">
+        <FilterBar
+          filters={filters}
+          filteredCount={listQuery.data?.filtered_count}
+          filteredOutstanding={listQuery.data?.filtered_outstanding}
+          onToggle={toggleFilter}
+          onClear={clearFilters}
+          onSelectAll={clearFilters}
+        />
 
-      <AccountsBody
-        query={listQuery}
-        filters={filters}
-        columns={columns}
-        onClearFilters={clearFilters}
-        onRetry={() => {
-          void listQuery.refetch();
-        }}
-        onAddEntries={() => {
-          void navigate({ to: "/app/add-entries" });
-        }}
-      />
+        <AccountsBody
+          query={listQuery}
+          filters={filters}
+          columns={columns}
+          onClearFilters={clearFilters}
+          onRetry={() => {
+            void listQuery.refetch();
+          }}
+          onAddEntries={() => {
+            void navigate({ to: "/app/add-entries" });
+          }}
+        />
+      </div>
     </div>
   );
 }
