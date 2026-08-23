@@ -39,7 +39,7 @@ function AppLayout() {
   }
 
   return (
-    <div className="app-theme min-h-screen bg-page">
+    <div className="app-shell app-theme min-h-screen bg-page">
       <header className="border-b border-line bg-card">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" className="text-base font-semibold tracking-tight text-ink">
