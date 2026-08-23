@@ -65,7 +65,32 @@ export const contactLanguageSchema = z.enum(["en", "hi", "ta", "te", "mr", "gu",
 
 export const accountsListFilterSchema = z.enum(["has_overdue", "missing_contacts", "paused"]);
 
+export const accountsSortColumnSchema = z.enum([
+  "name",
+  "outstanding",
+  "overdue",
+  "open_count",
+  "oldest_overdue_days",
+  "avg_days_late",
+  "chase_status",
+]);
+
 export const accountsSortDirSchema = z.enum(["asc", "desc"]);
+
+/**
+ * URL search for `/app/accounts`.
+ *
+ * `.default` fills missing keys; `.catch` recovers from malformed values so a
+ * bad link falls back instead of crashing the route.
+ */
+export const accountsSearchSchema = z.object({
+  filter: z
+    .union([accountsListFilterSchema, z.array(accountsListFilterSchema)])
+    .optional()
+    .catch(undefined),
+  sort: accountsSortColumnSchema.default("outstanding").catch("outstanding"),
+  dir: accountsSortDirSchema.default("desc").catch("desc"),
+});
 
 function agingSlot<B extends z.infer<typeof agingBucketSchema>>(bucket: B) {
   return z.object({
@@ -296,7 +321,9 @@ export type ActivityKind = z.infer<typeof activityKindSchema>;
 export type TdsSection = z.infer<typeof tdsSectionSchema>;
 export type ContactLanguage = z.infer<typeof contactLanguageSchema>;
 export type AccountsListFilter = z.infer<typeof accountsListFilterSchema>;
+export type AccountsSortColumn = z.infer<typeof accountsSortColumnSchema>;
 export type AccountsSortDir = z.infer<typeof accountsSortDirSchema>;
+export type AccountsSearch = z.infer<typeof accountsSearchSchema>;
 export type AccountListItem = z.infer<typeof accountListItemSchema>;
 export type AccountsList = z.infer<typeof accountsListSchema>;
 export type AccountSettings = z.infer<typeof accountSettingsSchema>;
