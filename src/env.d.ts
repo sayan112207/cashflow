@@ -8,6 +8,8 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
+  /** Optional — absent means mocks off. Must be exactly "true" or "false" when set. */
+  readonly VITE_USE_MOCKS?: string;
 }
 
 interface ImportMeta {
