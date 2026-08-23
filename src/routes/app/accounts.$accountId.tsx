@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useId, useRef, type KeyboardEvent } from "react";
 
 import { AgingBar } from "@/components/app/AgingBar";
+import { AccountInvoicesPanel } from "@/components/app/AccountInvoicesPanel";
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
 import { PRODUCT_NAME } from "@/lib/brand";
@@ -17,11 +18,13 @@ import {
   accountDetailSearchSchema,
   type AccountDetail,
   type AccountDetailTab,
+  type AccountInvoices,
 } from "@/lib/schemas/accounts";
 import {
   AccountsApiError,
   accountsQueryKeys,
   getAccount,
+  getAccountInvoices,
 } from "@/lib/services/accounts";
 
 const TABS: { id: AccountDetailTab; label: string }[] = [
@@ -46,6 +49,13 @@ function AccountDetailPage() {
   const detailQuery = useQuery({
     queryKey: accountsQueryKeys.detail(accountId),
     queryFn: () => getAccount(accountId),
+    retry: false,
+  });
+
+  const invoicesQuery = useQuery({
+    queryKey: accountsQueryKeys.invoices(accountId),
+    queryFn: () => getAccountInvoices(accountId),
+    enabled: tab === "invoices",
     retry: false,
   });
 
@@ -87,7 +97,19 @@ function AccountDetailPage() {
     <div className="space-y-8">
       <AccountHeaderCard detail={detail} />
       <AgingBar segments={detail.aging} />
-      <AccountDetailTabs tab={tab} onTabChange={setTab} />
+      <AccountDetailTabs
+        tab={tab}
+        onTabChange={setTab}
+        invoices={{
+          accountName: detail.name,
+          data: invoicesQuery.data,
+          isPending: invoicesQuery.isPending,
+          error: invoicesQuery.error,
+          onRetry: () => {
+            void invoicesQuery.refetch();
+          },
+        }}
+      />
     </div>
   );
 }
@@ -174,9 +196,17 @@ function metadataLine(detail: AccountDetail): string {
 function AccountDetailTabs({
   tab,
   onTabChange,
+  invoices,
 }: {
   tab: AccountDetailTab;
   onTabChange: (tab: AccountDetailTab) => void;
+  invoices: {
+    accountName: string;
+    data: AccountInvoices | undefined;
+    isPending: boolean;
+    error: Error | null;
+    onRetry: () => void;
+  };
 }) {
   const baseId = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -255,8 +285,16 @@ function AccountDetailTabs({
             hidden={!selected}
             className="pt-6"
           >
-            {/* Empty shell — tab bodies land in later commits. */}
-            {selected ? <div className="min-h-40" /> : null}
+            {selected && item.id === "invoices" ? (
+              <AccountInvoicesPanel
+                accountName={invoices.accountName}
+                data={invoices.data}
+                isPending={invoices.isPending}
+                error={invoices.error}
+                onRetry={invoices.onRetry}
+              />
+            ) : null}
+            {selected && item.id !== "invoices" ? <div className="min-h-40" /> : null}
           </div>
         );
       })}

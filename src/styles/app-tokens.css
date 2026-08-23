@@ -115,6 +115,7 @@
   opacity: 0;
 }
 .app-shell tr:hover .row-action,
+.app-shell tr:focus-within .row-action,
 .app-shell .row-action:focus-visible {
   opacity: 1;
 }

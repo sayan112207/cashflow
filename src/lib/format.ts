@@ -107,11 +107,25 @@ const timeOfDayFormatter = new Intl.DateTimeFormat(DISPLAY_LOCALE, {
   timeZone: DISPLAY_TIME_ZONE,
 });
 
+const shortDateFormatter = new Intl.DateTimeFormat(DISPLAY_LOCALE, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: DISPLAY_TIME_ZONE,
+});
+
 /** An ISO timestamp as "Monday, 17 August". */
 export function formatLongDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   return longDateFormatter.format(date);
+}
+
+/** A plain calendar date (`YYYY-MM-DD`) as "6 Aug 2026". */
+export function formatShortDate(isoDate: string): string {
+  const date = new Date(`${isoDate}T12:00:00+05:30`);
+  if (Number.isNaN(date.getTime())) return "—";
+  return shortDateFormatter.format(date);
 }
 
 /** An ISO timestamp as "09:12", 24-hour. */
