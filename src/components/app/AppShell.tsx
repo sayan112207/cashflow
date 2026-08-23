@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { Toaster } from "@/components/ui/sonner";
 import { WORDMARK } from "@/lib/brand";
 
 /**
@@ -118,7 +119,10 @@ export function AppShell({ user, orgName, children }: AppShellProps) {
           min-w-0 is what lets the chase table's overflow-auto engage: a flex
           child defaults to min-width:auto, which would grow the page to the
           table's min-width instead of scrolling the table. */}
-      <main className="max-w-7xl min-w-0 flex-1 bg-page px-8 pt-6 pb-10">{children}</main>
+      <main className="max-w-7xl min-w-0 flex-1 bg-page px-8 pt-6 pb-10">
+        {children}
+        <Toaster />
+      </main>
     </div>
   );
 }

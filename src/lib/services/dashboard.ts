@@ -30,6 +30,12 @@ import {
  * sense on the client where the loading states actually render.
  */
 
+/** Shared with the Dashboard so invalidation and fetch use the same keys. */
+export const dashboardQueryKeys = {
+  summary: ["dashboard", "summary"] as const,
+  chaseQueue: ["dashboard", "chase-queue"] as const,
+};
+
 const API_BASE_PATH = "/api/v1";
 
 /** Long enough that a skeleton is visible and a layout shift would be obvious. */
