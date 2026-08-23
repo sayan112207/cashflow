@@ -9,11 +9,7 @@ import {
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
 import { formatDays, formatINR, formatShortDate } from "@/lib/format";
-import type {
-  AccountInvoice,
-  AccountInvoiceGroup,
-  AccountInvoices,
-} from "@/lib/schemas/accounts";
+import type { AccountInvoice, AccountInvoiceGroup, AccountInvoices } from "@/lib/schemas/accounts";
 import type { AgingBucket } from "@/lib/schemas/dashboard";
 import { AccountsApiError } from "@/lib/services/accounts";
 
@@ -62,9 +58,7 @@ export function AccountInvoicesPanel({
   if (!data || data.groups.length === 0 || data.groups.every((g) => g.invoices.length === 0)) {
     return (
       <div className="flex flex-col items-start gap-3 py-6">
-        <p className="text-body font-semibold text-fg">
-          Nothing outstanding from {accountName}.
-        </p>
+        <p className="text-body font-semibold text-fg">Nothing outstanding from {accountName}.</p>
         <AppButton variant="secondary">Add an invoice</AppButton>
       </div>
     );
@@ -172,9 +166,7 @@ function InvoiceRow({ invoice }: { invoice: AccountInvoice }) {
             variant="text"
             className="row-action"
             disabled={chaseDisabled}
-            {...(invoice.chase_disabled_reason
-              ? { title: invoice.chase_disabled_reason }
-              : {})}
+            {...(invoice.chase_disabled_reason ? { title: invoice.chase_disabled_reason } : {})}
             aria-label={
               chaseDisabled
                 ? `Chase ${invoice.number} (disabled: ${invoice.chase_disabled_reason})`
@@ -190,11 +182,7 @@ function InvoiceRow({ invoice }: { invoice: AccountInvoice }) {
           >
             Mark paid
           </AppButton>
-          <AppButton
-            variant="text"
-            className="row-action"
-            aria-label={`Snooze ${invoice.number}`}
-          >
+          <AppButton variant="text" className="row-action" aria-label={`Snooze ${invoice.number}`}>
             Snooze
           </AppButton>
         </div>

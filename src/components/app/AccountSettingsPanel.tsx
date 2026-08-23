@@ -27,9 +27,7 @@ import { AccountsApiError } from "@/lib/services/accounts";
 import { cn } from "@/lib/utils";
 
 /** Org users for the owner select — expand when a users list endpoint exists. */
-const OWNER_OPTIONS = [
-  { id: "a5e70001-0000-4000-8000-000000000001", name: "Priya Nair" },
-] as const;
+const OWNER_OPTIONS = [{ id: "a5e70001-0000-4000-8000-000000000001", name: "Priya Nair" }] as const;
 
 const TDS_SECTIONS: TdsSection[] = ["194C", "194J", "194H", "194I", "None"];
 
@@ -60,8 +58,7 @@ export function AccountSettingsPanel({ accountId, detail }: AccountSettingsPanel
   }, [detail.updated_at, detail, form]);
 
   const paused = form.watch("paused");
-  const saving =
-    updateSettings.isPending || pauseMutation.isPending || resumeMutation.isPending;
+  const saving = updateSettings.isPending || pauseMutation.isPending || resumeMutation.isPending;
 
   async function onSubmit(values: AccountSettingsFormValues) {
     const wasPaused = detail.settings.paused_at !== null;
@@ -95,9 +92,7 @@ export function AccountSettingsPanel({ accountId, detail }: AccountSettingsPanel
         await pauseMutation.mutateAsync({
           body: {
             reason: values.pause_reason.trim(),
-            ...(values.paused_until.trim().length > 0
-              ? { until: values.paused_until }
-              : {}),
+            ...(values.paused_until.trim().length > 0 ? { until: values.paused_until } : {}),
           },
           ifMatch,
         });
@@ -112,9 +107,7 @@ export function AccountSettingsPanel({ accountId, detail }: AccountSettingsPanel
         await pauseMutation.mutateAsync({
           body: {
             reason: values.pause_reason.trim(),
-            ...(values.paused_until.trim().length > 0
-              ? { until: values.paused_until }
-              : {}),
+            ...(values.paused_until.trim().length > 0 ? { until: values.paused_until } : {}),
           },
           ifMatch,
         });
@@ -122,8 +115,7 @@ export function AccountSettingsPanel({ accountId, detail }: AccountSettingsPanel
 
       toast.success("Settings saved.");
     } catch (error) {
-      const message =
-        error instanceof AccountsApiError ? error.message : "Couldn't save settings.";
+      const message = error instanceof AccountsApiError ? error.message : "Couldn't save settings.";
       form.setError("root", { message });
     }
   }
@@ -138,8 +130,8 @@ export function AccountSettingsPanel({ accountId, detail }: AccountSettingsPanel
         noValidate
       >
         <p className="text-prose font-normal text-fg-muted">
-          Receivables are carried gross. TDS fields record what to expect at payment
-          time; they never reduce the outstanding figure.
+          Receivables are carried gross. TDS fields record what to expect at payment time; they
+          never reduce the outstanding figure.
         </p>
 
         <FormField

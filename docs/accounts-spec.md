@@ -10,22 +10,23 @@ The Dashboard's book totals contradict its own invoice amounts. Per-invoice figu
 
 **Replace these values in `src/lib/services/dashboard.mocks.ts`:**
 
-| Field | Was | Now |
-|---|---|---|
-| `total_outstanding` | 18,40,000 | **50,00,000** |
-| `overdue` | 9,20,000 | **28,00,000** |
-| `overdue_share_pct` | 50.0 | **56.0** |
-| Not yet due | 9,20,000 (50.0%) | **22,00,000 (44.0%)** |
-| 1–30 | 2,60,000 (14.1%) | **6,00,000 (12.0%)** |
-| 31–60 | 2,40,000 (13.0%) | **14,00,000 (28.0%)** |
-| 61–90 | 1,80,000 (9.8%) | **5,00,000 (10.0%)** |
-| 90+ | 2,40,000 (13.0%) | **3,00,000 (6.0%)** |
+| Field               | Was              | Now                   |
+| ------------------- | ---------------- | --------------------- |
+| `total_outstanding` | 18,40,000        | **50,00,000**         |
+| `overdue`           | 9,20,000         | **28,00,000**         |
+| `overdue_share_pct` | 50.0             | **56.0**              |
+| Not yet due         | 9,20,000 (50.0%) | **22,00,000 (44.0%)** |
+| 1–30                | 2,60,000 (14.1%) | **6,00,000 (12.0%)**  |
+| 31–60               | 2,40,000 (13.0%) | **14,00,000 (28.0%)** |
+| 61–90               | 1,80,000 (9.8%)  | **5,00,000 (10.0%)**  |
+| 90+                 | 2,40,000 (13.0%) | **3,00,000 (6.0%)**   |
 
 Everything else on the Dashboard is unchanged: 63 open invoices, 2 missing contacts, the six chase rows, the attention strip. The empty-state copy that reads "All ₹18,40,000 is current" becomes "All ₹50,00,000 is current".
 
 31–60 being the largest bucket looks odd but is what the invoice data demands — three of the four largest overdue invoices sit in that band. Leave it.
 
 **Org-level constants, true everywhere:**
+
 ```
 47 accounts · 44 with an outstanding balance · 63 open invoices
 ₹50,00,000 outstanding · ₹28,00,000 overdue
@@ -54,33 +55,33 @@ Right-aligned, live: `12 accounts · ₹36,37,000`. Updates with the filter.
 
 Eight columns. Every column header is a real `<button>` inside its `<th scope="col">`, with `aria-sort` reflecting state. Default sort: outstanding descending.
 
-| Column | Align |
-|---|---|
-| ACCOUNT | left — a real link to `/app/accounts/$id` |
-| OUTSTANDING | right |
-| OVERDUE | right — `text-danger`, `₹0` in `text-fg-muted` |
-| OPEN INVOICES | right |
+| Column         | Align                                             |
+| -------------- | ------------------------------------------------- |
+| ACCOUNT        | left — a real link to `/app/accounts/$id`         |
+| OUTSTANDING    | right                                             |
+| OVERDUE        | right — `text-danger`, `₹0` in `text-fg-muted`    |
+| OPEN INVOICES  | right                                             |
 | OLDEST OVERDUE | right — `94 days`, or `—` when nothing is overdue |
-| AVG DAYS LATE | right |
-| CONTACTS | left — three pips |
-| STATUS | left |
+| AVG DAYS LATE  | right                                             |
+| CONTACTS       | left — three pips                                 |
+| STATUS         | left                                              |
 
 ### The twelve rows
 
-| Account | Outstanding | Overdue | Open | Oldest | Avg late | Contacts | Status |
-|---|---|---|---|---|---|---|---|
-| Meridian Industries Pvt Ltd | ₹6,20,000 | ₹4,60,000 | 3 | 38 days | 29 | P0 P1 | Active |
-| Sharma Traders Pvt Ltd | ₹4,82,000 | ₹3,10,000 | 9 | 94 days | 34 | P0⚠ P1 P2 | **Can't chase** |
-| Nimbus Creative LLP | ₹4,15,000 | ₹2,80,000 | 2 | 40 days | 41 | P0 P1 | Active |
-| Shakti Engineering Pvt Ltd | ₹3,90,000 | ₹2,40,000 | 3 | 52 days | 47 | P0 P1 P2 | Active |
-| Bhavani Traders | ₹3,45,000 | ₹0 | 2 | — | 12 | P0 | Active |
-| Kaveri & Sons | ₹2,95,000 | ₹1,80,000 | 2 | 67 days | 52 | ✕ P1 P2 | **Can't chase** |
-| Vertex Labs Pvt Ltd | ₹2,60,000 | ₹1,40,000 | 2 | 38 days | 22 | P0 P1 | Active |
-| Sundaram Industries Pvt Ltd | ₹2,20,000 | ₹1,65,000 | 2 | 71 days | 58 | ✕ P1 | **Can't chase** |
-| Raghav & Co Traders | ₹1,85,000 | ₹62,000 | 2 | 15 days | 18 | P0 | Active |
-| Anand & Sons Traders | ₹1,60,000 | ₹95,000 | 2 | 12 days | 21 | P0 P1 | Active |
-| Coral Bay Creative | ₹1,40,000 | ₹0 | 1 | — | 8 | P0 | Paused |
-| Pinnacle Industries LLP | ₹1,25,000 | ₹62,000 | 1 | 9 days | 14 | P0 | Active |
+| Account                     | Outstanding | Overdue   | Open | Oldest  | Avg late | Contacts  | Status          |
+| --------------------------- | ----------- | --------- | ---- | ------- | -------- | --------- | --------------- |
+| Meridian Industries Pvt Ltd | ₹6,20,000   | ₹4,60,000 | 3    | 38 days | 29       | P0 P1     | Active          |
+| Sharma Traders Pvt Ltd      | ₹4,82,000   | ₹3,10,000 | 9    | 94 days | 34       | P0⚠ P1 P2 | **Can't chase** |
+| Nimbus Creative LLP         | ₹4,15,000   | ₹2,80,000 | 2    | 40 days | 41       | P0 P1     | Active          |
+| Shakti Engineering Pvt Ltd  | ₹3,90,000   | ₹2,40,000 | 3    | 52 days | 47       | P0 P1 P2  | Active          |
+| Bhavani Traders             | ₹3,45,000   | ₹0        | 2    | —       | 12       | P0        | Active          |
+| Kaveri & Sons               | ₹2,95,000   | ₹1,80,000 | 2    | 67 days | 52       | ✕ P1 P2   | **Can't chase** |
+| Vertex Labs Pvt Ltd         | ₹2,60,000   | ₹1,40,000 | 2    | 38 days | 22       | P0 P1     | Active          |
+| Sundaram Industries Pvt Ltd | ₹2,20,000   | ₹1,65,000 | 2    | 71 days | 58       | ✕ P1      | **Can't chase** |
+| Raghav & Co Traders         | ₹1,85,000   | ₹62,000   | 2    | 15 days | 18       | P0        | Active          |
+| Anand & Sons Traders        | ₹1,60,000   | ₹95,000   | 2    | 12 days | 21       | P0 P1     | Active          |
+| Coral Bay Creative          | ₹1,40,000   | ₹0        | 1    | —       | 8        | P0        | Paused          |
+| Pinnacle Industries LLP     | ₹1,25,000   | ₹62,000   | 1    | 9 days  | 14       | P0        | Active          |
 
 Visible totals: ₹36,37,000 outstanding, ₹19,94,000 overdue, 31 open invoices. The other 35 accounts carry ₹13,63,000, ₹8,06,000, and 32 invoices — three of them fully settled.
 
@@ -90,11 +91,11 @@ Three pips labelled P0, P1, P2. Filled `bg-fg` when a contact exists, hollow `bo
 
 **Three distinct states, and they are not the same problem:**
 
-| State | Pip | Status column | Meaning |
-|---|---|---|---|
-| Healthy | filled | `Active` | chaseable |
-| No P0 | `✕` in `bg-danger` + warning icon on the row | `Can't chase` | nobody to send to |
-| P0 bouncing | filled `bg-danger` with a small `⚠` | `Can't chase` | somebody, but mail isn't arriving |
+| State       | Pip                                          | Status column | Meaning                           |
+| ----------- | -------------------------------------------- | ------------- | --------------------------------- |
+| Healthy     | filled                                       | `Active`      | chaseable                         |
+| No P0       | `✕` in `bg-danger` + warning icon on the row | `Can't chase` | nobody to send to                 |
+| P0 bouncing | filled `bg-danger` with a small `⚠`          | `Can't chase` | somebody, but mail isn't arriving |
 
 Every pip carries an accessible name — `"P0 contact present"`, `"No P0 contact"`, `"P0 contact email bouncing"`. Never colour alone.
 
@@ -141,13 +142,13 @@ When the synced date is 7+ days old, the sync line reads `Chasing paused — dat
 
 Same component as the Dashboard. Five segments, each labelled with its amount:
 
-| Bucket | Amount |
-|---|---|
+| Bucket      | Amount    |
+| ----------- | --------- |
 | Not yet due | ₹1,72,000 |
-| 1–30 | ₹94,000 |
-| 31–60 | ₹1,16,000 |
-| 61–90 | ₹52,000 |
-| 90+ | ₹48,000 |
+| 1–30        | ₹94,000   |
+| 31–60       | ₹1,16,000 |
+| 61–90       | ₹52,000   |
+| 90+         | ₹48,000   |
 
 Sums to ₹4,82,000. Overdue = total − not yet due = ₹3,10,000. Both invariants get a test.
 
@@ -171,17 +172,17 @@ Days overdue: `text-danger` above 30, `text-warn` for 1–30, `text-fg-muted` an
 
 ### The nine invoices
 
-| Group | Invoice | Invoice date | Due date | Days | Amount | Status |
-|---|---|---|---|---|---|---|
-| Not yet due | INV-2301 | 6 Aug 2026 | 5 Sep 2026 | Not yet due | ₹1,00,000 | Not yet due |
-| Not yet due | INV-2288 | 31 Jul 2026 | 30 Aug 2026 | Not yet due | ₹72,000 | Not yet due |
-| 1–30 | INV-2240 | 3 Jul 2026 | 2 Aug 2026 | 15 days | ₹54,000 | Promised |
-| 1–30 | INV-2231 | 26 Jun 2026 | 26 Jul 2026 | 22 days | ₹40,000 | Partially paid |
-| 31–60 | INV-2180 | 5 Jun 2026 | 5 Jul 2026 | 43 days | ₹68,000 | Open |
-| 31–60 | INV-2166 | 29 May 2026 | 28 Jun 2026 | 50 days | ₹48,000 | Open |
-| 61–90 | INV-2104 | 7 May 2026 | 6 Jun 2026 | 72 days | ₹52,000 | Open |
-| 90+ | INV-2015 | 21 Apr 2026 | 21 May 2026 | 94 days | ₹30,000 | Open |
-| 90+ | INV-2008 | 24 Apr 2026 | 24 May 2026 | 91 days | ₹18,000 | Open |
+| Group       | Invoice  | Invoice date | Due date    | Days        | Amount    | Status         |
+| ----------- | -------- | ------------ | ----------- | ----------- | --------- | -------------- |
+| Not yet due | INV-2301 | 6 Aug 2026   | 5 Sep 2026  | Not yet due | ₹1,00,000 | Not yet due    |
+| Not yet due | INV-2288 | 31 Jul 2026  | 30 Aug 2026 | Not yet due | ₹72,000   | Not yet due    |
+| 1–30        | INV-2240 | 3 Jul 2026   | 2 Aug 2026  | 15 days     | ₹54,000   | Promised       |
+| 1–30        | INV-2231 | 26 Jun 2026  | 26 Jul 2026 | 22 days     | ₹40,000   | Partially paid |
+| 31–60       | INV-2180 | 5 Jun 2026   | 5 Jul 2026  | 43 days     | ₹68,000   | Open           |
+| 31–60       | INV-2166 | 29 May 2026  | 28 Jun 2026 | 50 days     | ₹48,000   | Open           |
+| 61–90       | INV-2104 | 7 May 2026   | 6 Jun 2026  | 72 days     | ₹52,000   | Open           |
+| 90+         | INV-2015 | 21 Apr 2026  | 21 May 2026 | 94 days     | ₹30,000   | Open           |
+| 90+         | INV-2008 | 24 Apr 2026  | 24 May 2026 | 91 days     | ₹18,000   | Open           |
 
 Every row exposes `Chase` / `Mark paid` / `Snooze` on hover **and focus**, using the `row-action` class.
 
@@ -213,17 +214,17 @@ A bounced P0 is the most common silent failure in the product. It must not read 
 
 Each an `<h2>` with a one-line description:
 
-| Tier | Heading | Description |
-|---|---|---|
-| P0 | `P0 — PRIMARY` | Receives every reminder from day one |
-| P1 | `P1 — ESCALATION` | Joins the thread when an invoice ages |
-| P2 | `P2 — FINAL ESCALATION` | Last step before formal action |
+| Tier | Heading                 | Description                           |
+| ---- | ----------------------- | ------------------------------------- |
+| P0   | `P0 — PRIMARY`          | Receives every reminder from day one  |
+| P1   | `P1 — ESCALATION`       | Joins the thread when an invoice ages |
+| P2   | `P2 — FINAL ESCALATION` | Last step before formal action        |
 
-| Tier | Contact | Designation | Email | Phone |
-|---|---|---|---|---|
-| P0 | Rajat Mehta | Accounts Executive | rajat@sharmatraders.com | +91 98••• •••21 |
-| P1 | Rajesh Kumar | Finance Manager | rajesh@sharmatraders.com | +91 99••• •••04 |
-| P2 | Mr. R. Sharma | Director | rsharma@sharmatraders.com | +91 98••• •••77 |
+| Tier | Contact       | Designation        | Email                     | Phone           |
+| ---- | ------------- | ------------------ | ------------------------- | --------------- |
+| P0   | Rajat Mehta   | Accounts Executive | rajat@sharmatraders.com   | +91 98••• •••21 |
+| P1   | Rajesh Kumar  | Finance Manager    | rajesh@sharmatraders.com  | +91 99••• •••04 |
+| P2   | Mr. R. Sharma | Director           | rsharma@sharmatraders.com | +91 98••• •••77 |
 
 ### Contact card
 
@@ -314,17 +315,17 @@ Leave layout room for future chase events so this doesn't need rework.
 
 A real `<form>` using react-hook-form and zod, matching the repo's existing form patterns.
 
-| Field | Control | Default |
-|---|---|---|
-| Default credit terms | number input, days | 30 |
-| Currency | select | INR |
-| Expected TDS section | select — 194C, 194J, 194H, 194I, None | 194J |
-| Expected TDS rate | number input, % | 10 |
-| Pause chasing | switch | on (bouncing) |
-| Pause reason | text, required when paused | Email bouncing |
-| Paused until | date, optional | — |
-| Account owner | select of org users | Priya Nair |
-| Notes | textarea | — |
+| Field                | Control                               | Default        |
+| -------------------- | ------------------------------------- | -------------- |
+| Default credit terms | number input, days                    | 30             |
+| Currency             | select                                | INR            |
+| Expected TDS section | select — 194C, 194J, 194H, 194I, None | 194J           |
+| Expected TDS rate    | number input, %                       | 10             |
+| Pause chasing        | switch                                | on (bouncing)  |
+| Pause reason         | text, required when paused            | Email bouncing |
+| Paused until         | date, optional                        | —              |
+| Account owner        | select of org users                   | Priya Nair     |
+| Notes                | textarea                              | —              |
 
 Save is disabled until something changes. On save, a toast. On failure, the inline error from the server, verbatim.
 

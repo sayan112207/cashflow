@@ -16,7 +16,10 @@ export function AccountStatusBadge({ label }: { label: ChaseStatusLabel }) {
   return (
     <Badge
       variant="outline"
-      className={cn("rounded-pill border-transparent text-pill font-semibold", LABEL_CLASSES[label])}
+      className={cn(
+        "rounded-pill border-transparent text-pill font-semibold",
+        LABEL_CLASSES[label],
+      )}
     >
       {label}
     </Badge>

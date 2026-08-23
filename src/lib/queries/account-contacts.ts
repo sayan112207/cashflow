@@ -37,11 +37,8 @@ export function useUpdateAccountContact(accountId: string) {
   const queryKey = accountsQueryKeys.contacts(accountId);
 
   return useMutation({
-    mutationFn: (vars: {
-      contactId: string;
-      body: UpdateContactBody;
-      ifMatch: string;
-    }) => updateAccountContact(accountId, vars.contactId, vars.body, vars.ifMatch),
+    mutationFn: (vars: { contactId: string; body: UpdateContactBody; ifMatch: string }) =>
+      updateAccountContact(accountId, vars.contactId, vars.body, vars.ifMatch),
 
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey });
@@ -58,9 +55,7 @@ export function useUpdateAccountContact(accountId: string) {
       queryClient.setQueryData<AccountContacts>(queryKey, {
         ...previous,
         contacts: previous.contacts.map((contact) =>
-          contact.contact_id === vars.contactId
-            ? applyContactPatch(contact, vars.body)
-            : contact,
+          contact.contact_id === vars.contactId ? applyContactPatch(contact, vars.body) : contact,
         ),
       });
 

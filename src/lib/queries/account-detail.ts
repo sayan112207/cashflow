@@ -1,11 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import type {
-  AccountDetail,
-  PauseAccountBody,
-  UpdateSettingsBody,
-} from "@/lib/schemas/accounts";
+import type { AccountDetail, PauseAccountBody, UpdateSettingsBody } from "@/lib/schemas/accounts";
 import {
   AccountsApiError,
   accountsQueryKeys,

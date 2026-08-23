@@ -23,11 +23,7 @@ import type {
   ContactTier,
   UpdateContactBody,
 } from "@/lib/schemas/accounts";
-import {
-  AccountsApiError,
-  accountsQueryKeys,
-  getAccountContacts,
-} from "@/lib/services/accounts";
+import { AccountsApiError, accountsQueryKeys, getAccountContacts } from "@/lib/services/accounts";
 import { cn } from "@/lib/utils";
 
 const TIERS: {
@@ -195,9 +191,7 @@ function ContactsLadder({
                 <p className="mt-1 text-prose font-normal text-fg-muted">{tier.description}</p>
               </div>
 
-              {tier.id === "P0" && bouncedP0 ? (
-                <BounceWarningStrip contact={bouncedP0} />
-              ) : null}
+              {tier.id === "P0" && bouncedP0 ? <BounceWarningStrip contact={bouncedP0} /> : null}
 
               {tier.id === "P0" && !hasUsableP0 ? (
                 <div className="rounded-card border border-danger-edge bg-danger-tint p-4">
@@ -288,8 +282,8 @@ function BounceWarningStrip({ contact }: { contact: AccountContact }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-danger-edge bg-danger-tint px-4 py-3">
       <p className="text-body font-semibold text-fg">
-        <span className="font-bold">{contact.name}'s email is bouncing.</span> Nothing has
-        reached this account since {ago}.
+        <span className="font-bold">{contact.name}'s email is bouncing.</span> Nothing has reached
+        this account since {ago}.
       </p>
       <AppButton variant="secondary">Replace contact</AppButton>
     </div>
@@ -351,7 +345,10 @@ function ContactCard({
                 <MoreHorizontal className="size-4" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-card border-hairline bg-card shadow-overlay">
+            <DropdownMenuContent
+              align="end"
+              className="rounded-card border-hairline bg-card shadow-overlay"
+            >
               {(["P0", "P1", "P2"] as const).map((tier) => (
                 <DropdownMenuItem
                   key={tier}
@@ -378,33 +375,25 @@ function ContactCard({
           label="Email"
           name={contact.name}
           checked={contact.channel_email}
-          onCheckedChange={(checked) =>
-            onUpdate(contact.contact_id, { channel_email: checked })
-          }
+          onCheckedChange={(checked) => onUpdate(contact.contact_id, { channel_email: checked })}
         />
         <ChannelSwitch
           label="WhatsApp"
           name={contact.name}
           checked={contact.channel_whatsapp}
-          onCheckedChange={(checked) =>
-            onUpdate(contact.contact_id, { channel_whatsapp: checked })
-          }
+          onCheckedChange={(checked) => onUpdate(contact.contact_id, { channel_whatsapp: checked })}
         />
         <ChannelSwitch
           label="SMS"
           name={contact.name}
           checked={contact.channel_sms}
-          onCheckedChange={(checked) =>
-            onUpdate(contact.contact_id, { channel_sms: checked })
-          }
+          onCheckedChange={(checked) => onUpdate(contact.contact_id, { channel_sms: checked })}
         />
         <ChannelSwitch
           label="Always CC"
           name={contact.name}
           checked={contact.always_cc}
-          onCheckedChange={(checked) =>
-            onUpdate(contact.contact_id, { always_cc: checked })
-          }
+          onCheckedChange={(checked) => onUpdate(contact.contact_id, { always_cc: checked })}
         />
         <ChannelSwitch
           label="Do not contact"

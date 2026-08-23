@@ -86,11 +86,7 @@ function Pip({ tier, state }: { tier: ContactTier; state: ContactPip }) {
         title={name}
         className="relative inline-flex size-5 items-center justify-center rounded-check bg-danger"
       >
-        <AlertTriangle
-          aria-hidden="true"
-          className="size-3 text-white"
-          strokeWidth={2.5}
-        />
+        <AlertTriangle aria-hidden="true" className="size-3 text-white" strokeWidth={2.5} />
       </span>
     );
   }

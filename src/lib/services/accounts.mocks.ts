@@ -80,8 +80,7 @@ const UPDATED_AT = "2026-08-17T09:12:00+05:30";
 const SYNCED_TWO_DAYS_AGO = "2026-08-15T09:12:00+05:30";
 const BOUNCED_NINE_DAYS_AGO = "2026-08-08T11:00:00+05:30";
 
-const CHASE_DISABLED_BOUNCE =
-  "Can't chase — Rajat Mehta's email is bouncing";
+const CHASE_DISABLED_BOUNCE = "Can't chase — Rajat Mehta's email is bouncing";
 
 const ORG_TOTALS = {
   account_count: 47,
@@ -971,12 +970,7 @@ export function mockUpdateContact(
   }
 
   const nextDnc = body.do_not_contact ?? contact.do_not_contact;
-  if (
-    contact.tier === "P0" &&
-    !contact.do_not_contact &&
-    nextDnc &&
-    usableP0Count(contacts) <= 1
-  ) {
+  if (contact.tier === "P0" && !contact.do_not_contact && nextDnc && usableP0Count(contacts) <= 1) {
     throw new MockAccountsConflictError(
       "last_p0_required",
       "An account needs a P0 contact to be chased. Add a replacement first.",

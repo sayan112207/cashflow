@@ -49,9 +49,7 @@ describe("Sharma Traders detail fixtures", () => {
     );
     expect(centsToMoney(agingSum)).toBe(sharmaDetailFixture.outstanding);
 
-    const notYetDue = sharmaDetailFixture.aging.find(
-      (segment) => segment.bucket === "Not yet due",
-    );
+    const notYetDue = sharmaDetailFixture.aging.find((segment) => segment.bucket === "Not yet due");
     if (!notYetDue) {
       throw new Error("missing Not yet due bucket");
     }

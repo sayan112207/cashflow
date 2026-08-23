@@ -13,11 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatINR, formatShortDate, isZeroMoney } from "@/lib/format";
 import type { AccountPayment, AccountPayments } from "@/lib/schemas/accounts";
-import {
-  AccountsApiError,
-  accountsQueryKeys,
-  getAccountPayments,
-} from "@/lib/services/accounts";
+import { AccountsApiError, accountsQueryKeys, getAccountPayments } from "@/lib/services/accounts";
 
 type AccountPaymentsPanelProps = {
   accountId: string;

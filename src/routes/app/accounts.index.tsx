@@ -17,11 +17,7 @@ import {
   type AccountsSortColumn,
   type AccountsSortDir,
 } from "@/lib/schemas/accounts";
-import {
-  AccountsApiError,
-  accountsQueryKeys,
-  getAccounts,
-} from "@/lib/services/accounts";
+import { AccountsApiError, accountsQueryKeys, getAccounts } from "@/lib/services/accounts";
 
 /**
  * Accounts list URL state.
@@ -40,9 +36,7 @@ const FILTER_OPTIONS: { id: AccountsListFilter; label: string }[] = [
   { id: "paused", label: "Paused" },
 ];
 
-function normalizeFilters(
-  filter: AccountsSearch["filter"],
-): AccountsListFilter[] {
+function normalizeFilters(filter: AccountsSearch["filter"]): AccountsListFilter[] {
   if (filter === undefined) return [];
   return Array.isArray(filter) ? filter : [filter];
 }
@@ -172,8 +166,7 @@ function AccountsPage() {
       align: "right",
       ariaSort: ariaSortFor("oldest_overdue_days"),
       onHeaderClick: () => onSort("oldest_overdue_days"),
-      text: (row) =>
-        row.oldest_overdue_days === null ? "—" : formatDays(row.oldest_overdue_days),
+      text: (row) => (row.oldest_overdue_days === null ? "—" : formatDays(row.oldest_overdue_days)),
     },
     {
       id: "avg_days_late",
@@ -400,8 +393,7 @@ function AccountsBody({
         <div>
           <h2 className="text-section font-bold text-fg">Nothing here yet.</h2>
           <p className="mt-2 text-body font-semibold text-fg-muted">
-            Import an export from Tally, Zoho, or a spreadsheet — or type a few invoices in by
-            hand.
+            Import an export from Tally, Zoho, or a spreadsheet — or type a few invoices in by hand.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -427,9 +419,7 @@ function AccountsBody({
     );
   }
 
-  return (
-    <DataTable columns={columns} rows={data.items} rowKey={(row) => row.account_id} />
-  );
+  return <DataTable columns={columns} rows={data.items} rowKey={(row) => row.account_id} />;
 }
 
 function AccountsLoading() {

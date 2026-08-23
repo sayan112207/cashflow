@@ -122,20 +122,30 @@ async function requestJson(path: string, init: RequestInit): Promise<unknown> {
 
 function buildListQuery(params: AccountsListParams): string {
   const search = new URLSearchParams();
-  const filters = params.filter === undefined ? [] : Array.isArray(params.filter) ? params.filter : [params.filter];
+  const filters =
+    params.filter === undefined
+      ? []
+      : Array.isArray(params.filter)
+        ? params.filter
+        : [params.filter];
   for (const filter of filters) {
     search.append("filter", accountsListFilterSchema.parse(filter));
   }
   if (params.sort !== undefined) search.set("sort", params.sort);
   if (params.dir !== undefined) search.set("dir", accountsSortDirSchema.parse(params.dir));
-  if (params.page !== undefined) search.set("page", String(z.number().int().positive().parse(params.page)));
+  if (params.page !== undefined)
+    search.set("page", String(z.number().int().positive().parse(params.page)));
   const qs = search.toString();
   return qs.length > 0 ? `?${qs}` : "";
 }
 
 function filterMockList(list: AccountsList, params: AccountsListParams): AccountsList {
   const filters =
-    params.filter === undefined ? [] : Array.isArray(params.filter) ? params.filter : [params.filter];
+    params.filter === undefined
+      ? []
+      : Array.isArray(params.filter)
+        ? params.filter
+        : [params.filter];
 
   let items = list.items;
   for (const filter of filters) {
@@ -533,10 +543,7 @@ export async function pauseAccount(
 }
 
 /** `POST /api/v1/accounts/{id}/resume` */
-export async function resumeAccount(
-  accountId: string,
-  ifMatch: string,
-): Promise<AccountDetail> {
+export async function resumeAccount(accountId: string, ifMatch: string): Promise<AccountDetail> {
   const id = accountIdSchema.parse(accountId);
   const match = ifMatchSchema.parse(ifMatch);
 

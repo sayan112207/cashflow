@@ -11,6 +11,7 @@ Extends `api-contract.md`. Everything there still holds: money as decimal string
 The Dashboard build already defined `organisations`, `users`, `accounts`, `contacts`, `invoices`. Add:
 
 ### `accounts` — new columns
+
 ```
 paused_at            timestamptz
 pause_reason         text
@@ -25,11 +26,13 @@ p1_after_days        int  not null  default 21
 p2_after_days        int  not null  default 45
 last_synced_at       timestamptz
 ```
+
 Enum `tds_section`: `194C | 194J | 194H | 194I | None`
 
 Check constraint: `p2_after_days > p1_after_days`. Enforce in the database, not only in the form — the form is not the only writer.
 
 ### `contacts` — new columns
+
 ```
 designation      text
 channel_email    boolean  not null  default true
@@ -47,6 +50,7 @@ sort_order       int  not null  default 0
 **Drop the unique index on `(account_id, tier)`.** Multiple contacts may share a tier — two AP staff both receive the P0 message. The Dashboard build created it; it is wrong and must be removed by migration.
 
 Replace it with a partial index for the rule that does hold:
+
 ```sql
 CREATE INDEX contacts_p0_active
   ON contacts (account_id)
@@ -54,6 +58,7 @@ CREATE INDEX contacts_p0_active
 ```
 
 ### `payments` and `payment_allocations`
+
 ```
 payments
   id · org_id · account_id · received_on date · amount numeric(14,2)
@@ -62,15 +67,18 @@ payments
 payment_allocations
   id · payment_id · invoice_id · amount numeric(14,2)
 ```
+
 Enum `payment_source`: `Bank alert | Manual | Statement`
 
 Unapplied credit is derived: `payment.amount - sum(allocations.amount)`. Never stored.
 
 ### `activity_log`
+
 ```
 id · org_id · account_id · actor_user_id (nullable — system events)
 kind activity_kind · summary text · invoice_id · contact_id · occurred_at
 ```
+
 Enum `activity_kind`: `invoice_created | invoice_edited | import | payment_received | promise_made | promise_broken | dispute_raised | contact_added | contact_edited | contact_removed | bounce | pause | resume | message_sent`
 
 `summary` is the plain sentence, composed by the backend. The frontend renders it verbatim and never builds it from parts.
@@ -83,12 +91,12 @@ Enum `activity_kind`: `invoice_created | invoice_edited | import | payment_recei
 
 `services/chase_status.py::resolve(account) -> ChaseStatus` — the single function that answers "can this account be chased". First match wins:
 
-| Order | Condition | Status | Label |
-|---|---|---|---|
-| 1 | no contact with `tier='P0'` and `do_not_contact=false` | `no_p0` | `Can't chase` |
-| 2 | every usable P0 has `delivery_state='bounced'` | `bounced_p0` | `Can't chase` |
-| 3 | `paused_at` is set and (`paused_until` is null or ≥ today) | `paused` | `Paused` |
-| 4 | otherwise | `active` | `Active` |
+| Order | Condition                                                  | Status       | Label         |
+| ----- | ---------------------------------------------------------- | ------------ | ------------- |
+| 1     | no contact with `tier='P0'` and `do_not_contact=false`     | `no_p0`      | `Can't chase` |
+| 2     | every usable P0 has `delivery_state='bounced'`             | `bounced_p0` | `Can't chase` |
+| 3     | `paused_at` is set and (`paused_until` is null or ≥ today) | `paused`     | `Paused`      |
+| 4     | otherwise                                                  | `active`     | `Active`      |
 
 `no_p0` and `bounced_p0` share a label but are different problems and must stay distinct in the payload. The frontend renders different pips for each; collapsing them loses the fix the user needs to make.
 
@@ -97,6 +105,7 @@ This function is also what `eligible_invoices` from the Dashboard build calls. *
 ### 2.2 Derived account figures
 
 Per account, computed not stored:
+
 ```
 outstanding      = Σ (amount_gross - amount_paid) for open invoices
 overdue          = Σ same, where days_overdue > 0
@@ -131,6 +140,7 @@ avg_days_late    = mean of (paid_on - due_date) over the last 12 months
 ```
 GET /api/v1/accounts?filter=&sort=&dir=&page=
 ```
+
 ```json
 {
   "total_count": 47,
@@ -172,6 +182,7 @@ GET /api/v1/accounts/{id}/activity?limit= reverse chronological
 ```
 
 The invoices response returns groups, not a flat list — the subtotal per bucket is the backend's to compute:
+
 ```json
 { "groups": [ { "bucket": "31–60", "subtotal": "116000.00", "invoices": [ … ] } ] }
 ```
@@ -194,12 +205,12 @@ Every mutation writes an `activity_log` row in the same transaction. An audit tr
 
 ### Error codes the frontend handles specifically
 
-| Code | HTTP | Message |
-|---|---|---|
-| `last_p0_required` | 409 | An account needs a P0 contact to be chased. Add a replacement first. |
-| `escalation_order` | 422 | P2 must come after P1. |
-| `pause_reason_required` | 422 | Add a reason before pausing. |
-| `stale_write` | 409 | Someone else changed this account. Reload and try again. |
+| Code                    | HTTP | Message                                                              |
+| ----------------------- | ---- | -------------------------------------------------------------------- |
+| `last_p0_required`      | 409  | An account needs a P0 contact to be chased. Add a replacement first. |
+| `escalation_order`      | 422  | P2 must come after P1.                                               |
+| `pause_reason_required` | 422  | Add a reason before pausing.                                         |
+| `stale_write`           | 409  | Someone else changed this account. Reload and try again.             |
 
 `message` is user-facing copy following the voice rules and is displayed verbatim.
 

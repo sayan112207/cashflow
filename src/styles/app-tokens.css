@@ -16,65 +16,65 @@
 
 @theme {
   /* ---------- Surfaces ---------- */
-  --color-page:        #FCFCFA;  /* app background */
-  --color-card:        #FFFFFF;
-  --color-subtle:      #F7F7F3;  /* sidebar, table headers, nested blocks */
-  --color-alt:         #F1F1EC;  /* neutral pills, skeleton bars */
-  --color-hovered:     #EFEFE9;  /* row and control hover */
+  --color-page: #fcfcfa; /* app background */
+  --color-card: #ffffff;
+  --color-subtle: #f7f7f3; /* sidebar, table headers, nested blocks */
+  --color-alt: #f1f1ec; /* neutral pills, skeleton bars */
+  --color-hovered: #efefe9; /* row and control hover */
 
   /* ---------- Borders ---------- */
-  --color-hairline:    #E6E6E0;  /* default 1px */
-  --color-stroke:      #DCDCD4;  /* inputs, focused containers */
+  --color-hairline: #e6e6e0; /* default 1px */
+  --color-stroke: #dcdcd4; /* inputs, focused containers */
 
   /* ---------- Foreground ---------- */
-  --color-fg:          #111111;
-  --color-fg-soft:     #686863;  /* body prose, descriptions */
-  --color-fg-muted:    #6E6E67;  /* labels, metadata — 5.14:1 on card */
+  --color-fg: #111111;
+  --color-fg-soft: #686863; /* body prose, descriptions */
+  --color-fg-muted: #6e6e67; /* labels, metadata — 5.14:1 on card */
 
   /* ---------- Accent: actions, money received ---------- */
-  --color-accent:       #087A52;  /* filled buttons — white text = 5.36:1 */
-  --color-accent-hover: #0A6B49;
-  --color-accent-line:  #18A873;  /* DECORATIVE ONLY — nav edge, focus ring,
+  --color-accent: #087a52; /* filled buttons — white text = 5.36:1 */
+  --color-accent-hover: #0a6b49;
+  --color-accent-line: #18a873; /* DECORATIVE ONLY — nav edge, focus ring,
                                      checkbox fill. Never text, never a fill. */
-  --color-accent-tint:  #E8F6EF;
-  --color-accent-edge:  #DCEEE5;
-  --color-accent-row:   #F3FAF6;  /* selected table row */
+  --color-accent-tint: #e8f6ef;
+  --color-accent-edge: #dceee5;
+  --color-accent-row: #f3faf6; /* selected table row */
 
   /* ---------- Danger: overdue, destructive, disputed ---------- */
-  --color-danger:       #B4433A;  /* 5.52:1 on card */
-  --color-danger-tint:  #FBEAEA;
-  --color-danger-edge:  #F2D6D4;
+  --color-danger: #b4433a; /* 5.52:1 on card */
+  --color-danger-tint: #fbeaea;
+  --color-danger-edge: #f2d6d4;
 
   /* ---------- Warn: promised, approaching, stale ---------- */
-  --color-warn:         #7E6300;  /* 5.72:1 on card, 5.05:1 on alt */
-  --color-warn-tint:    #FBF3DC;
-  --color-warn-edge:    #F0E4C4;
+  --color-warn: #7e6300; /* 5.72:1 on card, 5.05:1 on alt */
+  --color-warn-tint: #fbf3dc;
+  --color-warn-edge: #f0e4c4;
 
   /* ---------- Aging bar segments — decorative, never text ---------- */
-  --color-aging-none:   #DCDCD4;  /* Not yet due */
-  --color-aging-30:     #C7C7BF;
-  --color-aging-60:     #ABABA2;
-  --color-aging-90:     #868680;
-  --color-aging-over:   #B4433A;  /* 90+ */
+  --color-aging-none: #dcdcd4; /* Not yet due */
+  --color-aging-30: #c7c7bf;
+  --color-aging-60: #ababa2;
+  --color-aging-90: #868680;
+  --color-aging-over: #b4433a; /* 90+ */
 
   /* ---------- Type: seven sizes, no others ---------- */
-  --text-metric:  28px;   /* metric value        · use with font-bold tracking-tight */
-  --text-title:   22px;   /* page title          · font-bold tracking-tight */
-  --text-section: 16px;   /* section heading     · font-bold tracking-tight */
-  --text-body:  13.5px;   /* body, cell, button, nav item · font-semibold */
-  --text-prose: 12.5px;   /* secondary prose, helper text · font-normal */
-  --text-pill:  11.5px;   /* badge label         · font-semibold */
-  --text-eyebrow:  11px;  /* eyebrow, column header · font-semibold uppercase tracking-[0.08em] */
+  --text-metric: 28px; /* metric value        · use with font-bold tracking-tight */
+  --text-title: 22px; /* page title          · font-bold tracking-tight */
+  --text-section: 16px; /* section heading     · font-bold tracking-tight */
+  --text-body: 13.5px; /* body, cell, button, nav item · font-semibold */
+  --text-prose: 12.5px; /* secondary prose, helper text · font-normal */
+  --text-pill: 11.5px; /* badge label         · font-semibold */
+  --text-eyebrow: 11px; /* eyebrow, column header · font-semibold uppercase tracking-[0.08em] */
 
   /* ---------- Radii ---------- */
-  --radius-pill:  100px;  /* pills, chips, badges, filled buttons, avatars */
-  --radius-card:   12px;  /* cards, panels, modals */
-  --radius-input:  10px;  /* inputs, selects, textareas */
-  --radius-nav:     8px;  /* nav items */
-  --radius-check:   4px;  /* checkboxes, skeleton bars */
+  --radius-pill: 100px; /* pills, chips, badges, filled buttons, avatars */
+  --radius-card: 12px; /* cards, panels, modals */
+  --radius-input: 10px; /* inputs, selects, textareas */
+  --radius-nav: 8px; /* nav items */
+  --radius-check: 4px; /* checkboxes, skeleton bars */
 
   /* ---------- Elevation: modals and popovers only ---------- */
-  --shadow-overlay: 0 8px 24px rgb(17 17 17 / 0.10);
+  --shadow-overlay: 0 8px 24px rgb(17 17 17 / 0.1);
 }
 
 /* ---------- Spacing ----------

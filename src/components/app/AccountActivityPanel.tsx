@@ -5,11 +5,7 @@ import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
 import { formatRelativeTimestamp } from "@/lib/format";
 import type { AccountActivityItem } from "@/lib/schemas/accounts";
-import {
-  AccountsApiError,
-  accountsQueryKeys,
-  getAccountActivity,
-} from "@/lib/services/accounts";
+import { AccountsApiError, accountsQueryKeys, getAccountActivity } from "@/lib/services/accounts";
 
 type AccountActivityPanelProps = {
   accountId: string;
@@ -74,17 +70,9 @@ export function AccountActivityPanel({ accountId }: AccountActivityPanelProps) {
   );
 }
 
-function ActivityEntry({
-  accountId,
-  item,
-}: {
-  accountId: string;
-  item: AccountActivityItem;
-}) {
+function ActivityEntry({ accountId, item }: { accountId: string; item: AccountActivityItem }) {
   const relative = formatRelativeTimestamp(item.occurred_at);
-  const summary = (
-    <span className="text-body font-semibold text-fg">{item.summary}</span>
-  );
+  const summary = <span className="text-body font-semibold text-fg">{item.summary}</span>;
 
   let linkedSummary = summary;
   if (item.invoice_id) {
@@ -114,10 +102,7 @@ function ActivityEntry({
   return (
     <li className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
       {linkedSummary}
-      <time
-        dateTime={item.occurred_at}
-        className="shrink-0 text-prose font-normal text-fg-muted"
-      >
+      <time dateTime={item.occurred_at} className="shrink-0 text-prose font-normal text-fg-muted">
         {relative}
       </time>
     </li>

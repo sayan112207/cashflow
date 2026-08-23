@@ -122,13 +122,7 @@ function AccountDetailPage() {
   );
 }
 
-function AccountHeaderCard({
-  accountId,
-  detail,
-}: {
-  accountId: string;
-  detail: AccountDetail;
-}) {
+function AccountHeaderCard({ accountId, detail }: { accountId: string; detail: AccountDetail }) {
   const stale = isSyncStale(detail.last_synced_at);
   const daysSince = formatCalendarDaysSince(detail.last_synced_at);
 
