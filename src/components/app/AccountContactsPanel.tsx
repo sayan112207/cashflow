@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { MoreHorizontal } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
@@ -14,6 +14,7 @@ import { formatCalendarDaysSince } from "@/lib/format";
 import {
   useDeleteAccountContact,
   useUpdateAccountContact,
+  useUpdateAccountEscalation,
 } from "@/lib/queries/account-contacts";
 import type {
   AccountContact,
@@ -75,6 +76,7 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
 
   const updateContact = useUpdateAccountContact(accountId);
   const deleteContact = useDeleteAccountContact(accountId);
+  const updateEscalation = useUpdateAccountEscalation(accountId);
 
   if (contactsQuery.isPending) {
     return (
@@ -125,6 +127,12 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
           ifMatch: data.updated_at,
         });
       }}
+      onSaveEscalation={(body) => {
+        updateEscalation.mutate({
+          body,
+          ifMatch: data.updated_at,
+        });
+      }}
     />
   );
 }
@@ -133,20 +141,43 @@ function ContactsLadder({
   data,
   onUpdate,
   onDelete,
+  onSaveEscalation,
 }: {
   data: AccountContacts;
   onUpdate: (contactId: string, body: UpdateContactBody) => void;
   onDelete: (contactId: string) => void;
+  onSaveEscalation: (body: { p1_after_days: number; p2_after_days: number }) => void;
 }) {
   const [p1Days, setP1Days] = useState(data.p1_after_days);
   const [p2Days, setP2Days] = useState(data.p2_after_days);
+  const p1Ref = useRef(p1Days);
+  const p2Ref = useRef(p2Days);
 
   useEffect(() => {
     setP1Days(data.p1_after_days);
     setP2Days(data.p2_after_days);
+    p1Ref.current = data.p1_after_days;
+    p2Ref.current = data.p2_after_days;
   }, [data.p1_after_days, data.p2_after_days]);
 
-  const escalationInvalid = p2Days <= p1Days;
+  const escalationInvalid = !isValidEscalationOrder(p1Days, p2Days);
+
+  function trySaveEscalation(nextP1: number, nextP2: number) {
+    if (!isValidEscalationOrder(nextP1, nextP2)) return;
+    if (nextP1 === data.p1_after_days && nextP2 === data.p2_after_days) return;
+    onSaveEscalation({ p1_after_days: nextP1, p2_after_days: nextP2 });
+  }
+
+  function setP1(next: number) {
+    p1Ref.current = next;
+    setP1Days(next);
+  }
+
+  function setP2(next: number) {
+    p2Ref.current = next;
+    setP2Days(next);
+  }
+
   const hasUsableP0 = data.contacts.some((c) => c.tier === "P0" && !c.do_not_contact);
   const bouncedP0 = data.contacts.find(
     (c) => c.tier === "P0" && !c.do_not_contact && c.delivery_state === "bounced",
@@ -205,8 +236,9 @@ function ContactsLadder({
               type="number"
               min={1}
               max={365}
-              value={p1Days}
-              onChange={(event) => setP1Days(Number(event.target.value))}
+              value={Number.isFinite(p1Days) ? p1Days : ""}
+              onChange={(event) => setP1(Number(event.target.value))}
+              onBlur={() => trySaveEscalation(p1Ref.current, p2Ref.current)}
               className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum"
             />
           </label>{" "}
@@ -220,8 +252,9 @@ function ContactsLadder({
               type="number"
               min={1}
               max={365}
-              value={p2Days}
-              onChange={(event) => setP2Days(Number(event.target.value))}
+              value={Number.isFinite(p2Days) ? p2Days : ""}
+              onChange={(event) => setP2(Number(event.target.value))}
+              onBlur={() => trySaveEscalation(p1Ref.current, p2Ref.current)}
               className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum"
             />
           </label>{" "}
@@ -454,6 +487,18 @@ function ChannelSwitch({
   );
 }
 
+function isValidEscalationOrder(p1Days: number, p2Days: number): boolean {
+  return (
+    Number.isInteger(p1Days) &&
+    Number.isInteger(p2Days) &&
+    p1Days >= 1 &&
+    p1Days <= 365 &&
+    p2Days >= 1 &&
+    p2Days <= 365 &&
+    p2Days > p1Days
+  );
+}
+
 function escalationPreview(
   contacts: readonly AccountContact[],
   p1Days: number,
@@ -463,17 +508,24 @@ function escalationPreview(
   const p1 = contacts.find((c) => c.tier === "P1" && !c.do_not_contact);
   const p2 = contacts.find((c) => c.tier === "P2" && !c.do_not_contact);
 
-  const first = p0 ? firstName(p0.name) : "Primary";
+  // Cumulative: P0 stays; later tiers "join" the same thread.
+  const first = p0 ? previewName(p0.name) : "Primary";
   const parts = [`${first} gets the first reminder.`];
-  if (p1) parts.push(`${firstName(p1.name)} joins at day ${p1Days}.`);
-  if (p2) parts.push(`${firstName(p2.name)} joins at day ${p2Days}.`);
+  if (p1 && Number.isFinite(p1Days)) {
+    parts.push(`${previewName(p1.name)} joins at day ${p1Days}.`);
+  }
+  if (p2 && Number.isFinite(p2Days)) {
+    parts.push(`${previewName(p2.name)} joins at day ${p2Days}.`);
+  }
   return parts.join(" ");
 }
 
-function firstName(fullName: string): string {
+/** Spec preview: "Rajat" / "Rajesh" / "Mr. Sharma". */
+function previewName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
-  if (parts[0] === "Mr." || parts[0] === "Mrs." || parts[0] === "Ms.") {
-    return parts.slice(0, 2).join(" ");
+  const honorific = parts[0];
+  if (honorific === "Mr." || honorific === "Mrs." || honorific === "Ms.") {
+    return `${honorific} ${parts[parts.length - 1]}`;
   }
   return parts[0] ?? fullName;
 }

@@ -5,12 +5,14 @@ import type {
   AccountContact,
   AccountContacts,
   UpdateContactBody,
+  UpdateEscalationBody,
 } from "@/lib/schemas/accounts";
 import {
   AccountsApiError,
   accountsQueryKeys,
   deleteAccountContact,
   updateAccountContact,
+  updateAccountEscalation,
 } from "@/lib/services/accounts";
 
 /**
@@ -75,6 +77,51 @@ export function useUpdateAccountContact(accountId: string) {
         return;
       }
       toast.error("Couldn't update that contact.");
+    },
+
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKey, data);
+    },
+  });
+}
+
+/**
+ * Escalation timing — same optimistic shape as contact update.
+ * Callers must not invoke this when p2_after_days ≤ p1_after_days.
+ */
+export function useUpdateAccountEscalation(accountId: string) {
+  const queryClient = useQueryClient();
+  const queryKey = accountsQueryKeys.contacts(accountId);
+
+  return useMutation({
+    mutationFn: (vars: { body: UpdateEscalationBody; ifMatch: string }) =>
+      updateAccountEscalation(accountId, vars.body, vars.ifMatch),
+
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<AccountContacts>(queryKey);
+
+      if (!previous) return { previous: undefined };
+
+      queryClient.setQueryData<AccountContacts>(queryKey, {
+        ...previous,
+        p1_after_days: vars.body.p1_after_days,
+        p2_after_days: vars.body.p2_after_days,
+      });
+
+      return { previous };
+    },
+
+    onError: (error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+
+      if (error instanceof AccountsApiError) {
+        toast.error(error.message);
+        return;
+      }
+      toast.error("Couldn't update escalation timing.");
     },
 
     onSuccess: (data) => {
