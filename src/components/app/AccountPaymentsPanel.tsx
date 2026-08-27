@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatINR, formatShortDate, isZeroMoney } from "@/lib/format";
-import type { AccountPayment, AccountPayments } from "@/lib/schemas/accounts";
+import type { AccountPayment, PaymentTone } from "@/lib/schemas/accounts";
 import { AccountsApiError, accountsQueryKeys, getAccountPayments } from "@/lib/services/accounts";
 
 type AccountPaymentsPanelProps = {
@@ -20,7 +20,13 @@ type AccountPaymentsPanelProps = {
   accountName: string;
 };
 
-/** Spec §5 — payments table + unapplied-credit strip. Allocate routes out; no modal. */
+const TONE_CLASS: Record<PaymentTone, string> = {
+  muted: "text-fg-soft",
+  warn: "text-warn",
+  danger: "text-danger",
+};
+
+/** Spec §5 — stats strip, payments table, unapplied-credit banner. */
 export function AccountPaymentsPanel({ accountId, accountName }: AccountPaymentsPanelProps) {
   const paymentsQuery = useQuery({
     queryKey: accountsQueryKeys.payments(accountId),
@@ -29,13 +35,7 @@ export function AccountPaymentsPanel({ accountId, accountName }: AccountPayments
   });
 
   if (paymentsQuery.isPending) {
-    return (
-      <div className="space-y-2" aria-busy="true" aria-label="Loading payments">
-        {Array.from({ length: 4 }, (_, i) => (
-          <AppSkeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <PaymentsLoading />;
   }
 
   if (paymentsQuery.isError) {
@@ -44,16 +44,18 @@ export function AccountPaymentsPanel({ accountId, accountName }: AccountPayments
         ? paymentsQuery.error.message
         : "Couldn't load payments.";
     return (
-      <div className="flex flex-col items-start gap-3 py-6">
+      <div className="rounded-card border border-hairline bg-card p-6">
         <p className="text-body font-semibold text-fg">{message}</p>
-        <AppButton
-          variant="secondary"
-          onClick={() => {
-            void paymentsQuery.refetch();
-          }}
-        >
-          Retry
-        </AppButton>
+        <div className="mt-3">
+          <AppButton
+            variant="secondary"
+            onClick={() => {
+              void paymentsQuery.refetch();
+            }}
+          >
+            Retry
+          </AppButton>
+        </div>
       </div>
     );
   }
@@ -61,102 +63,173 @@ export function AccountPaymentsPanel({ accountId, accountName }: AccountPayments
   const data = paymentsQuery.data;
   if (!data || data.items.length === 0) {
     return (
-      <p className="py-6 text-body font-semibold text-fg">
-        No payments recorded from {accountName} yet.
-      </p>
+      <div className="rounded-card border border-hairline bg-card p-8 text-center">
+        <p className="text-body font-semibold text-fg">
+          No payments recorded from {accountName} yet.
+        </p>
+      </div>
     );
   }
 
-  return <PaymentsTable data={data} />;
-}
-
-function PaymentsTable({ data }: { data: AccountPayments }) {
-  const showUnapplied = !isZeroMoney(data.unapplied_total);
+  const { stats, items } = data;
+  const hasUnapplied = !isZeroMoney(stats.unapplied_total);
 
   return (
-    <div className="space-y-4">
-      {showUnapplied ? (
-        <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-col gap-5">
+      <StatRow
+        received={stats.received_90d}
+        unapplied={stats.unapplied_total}
+        averageDelay={stats.average_delay_days}
+      />
+
+      <div className="overflow-x-auto rounded-card border border-hairline bg-card">
+        <Table className="min-w-[760px]">
+          <TableHeader>
+            <TableRow className="bg-subtle">
+              <TableHead
+                scope="col"
+                className="text-eyebrow font-semibold tracking-[0.08em] text-fg-muted uppercase"
+              >
+                Payment
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="text-right text-eyebrow font-semibold tracking-[0.08em] text-fg-muted uppercase"
+              >
+                Amount
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="text-eyebrow font-semibold tracking-[0.08em] text-fg-muted uppercase"
+              >
+                Applied to
+              </TableHead>
+              <TableHead scope="col" className="text-right">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((payment) => (
+              <PaymentRow key={payment.payment_id} payment={payment} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {hasUnapplied ? (
+        <div className="flex items-center justify-between gap-4 rounded-card border border-warn-edge bg-warn-tint px-4 py-3">
           <p className="text-body font-semibold text-warn">
-            {formatINR(data.unapplied_total)} unapplied credit
+            {formatINR(stats.unapplied_total)} is held as unapplied credit on this account.
           </p>
           <Link
             to="/app/payments"
-            className="inline-flex items-center justify-center rounded-pill border border-stroke bg-card px-4 py-2 text-body font-semibold text-fg transition-colors duration-150 hover:bg-hovered"
+            className="shrink-0 text-body font-semibold text-accent hover:text-accent-hover"
           >
-            Allocate
+            Go to payment triage
           </Link>
         </div>
       ) : null}
+    </div>
+  );
+}
 
-      <Table className="min-w-max border-collapse">
-        <TableHeader>
-          <TableRow className="border-0 hover:bg-transparent">
-            <TableHead
-              scope="col"
-              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
-            >
-              Date
-            </TableHead>
-            <TableHead
-              scope="col"
-              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
-            >
-              Amount
-            </TableHead>
-            <TableHead
-              scope="col"
-              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
-            >
-              Source
-            </TableHead>
-            <TableHead
-              scope="col"
-              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
-            >
-              Allocated to
-            </TableHead>
-            <TableHead
-              scope="col"
-              className="h-auto border-b border-hairline bg-subtle px-3 py-3 text-right text-eyebrow font-semibold tracking-widest text-fg-muted uppercase"
-            >
-              Unapplied
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.items.map((payment) => (
-            <PaymentRow key={payment.payment_id} payment={payment} />
-          ))}
-        </TableBody>
-      </Table>
+function StatRow({
+  received,
+  unapplied,
+  averageDelay,
+}: {
+  received: string;
+  unapplied: string;
+  averageDelay: number | null;
+}) {
+  return (
+    <dl className="grid grid-cols-3 gap-4">
+      <Stat label="received in 90 days" value={formatINR(received)} tone="fg" />
+      <Stat label="unapplied credit" value={formatINR(unapplied)} tone="warn" />
+      <Stat
+        label="average delay"
+        value={averageDelay === null ? "—" : `${averageDelay} days`}
+        tone={averageDelay === null ? "muted" : "danger"}
+      />
+    </dl>
+  );
+}
+
+const STAT_TONE = {
+  fg: "text-fg",
+  warn: "text-warn",
+  danger: "text-danger",
+  muted: "text-fg-muted",
+} as const;
+
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: keyof typeof STAT_TONE;
+}) {
+  return (
+    <div className="rounded-card border border-hairline bg-card px-5 py-4">
+      <dd className={`tnum text-metric font-bold tracking-tight ${STAT_TONE[tone]}`}>{value}</dd>
+      <dt className="mt-1 text-prose font-normal text-fg-muted">{label}</dt>
     </div>
   );
 }
 
 function PaymentRow({ payment }: { payment: AccountPayment }) {
-  const allocatedTo =
-    payment.allocations.length === 0
-      ? "—"
-      : payment.allocations.map((a) => a.invoice_number).join(", ");
-
   return (
-    <TableRow className="border-0 hover:bg-hovered">
-      <TableCell className="border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
-        {formatShortDate(payment.received_on)}
+    <TableRow className="group hover:bg-hovered">
+      <TableCell className="py-3 align-top">
+        <div className="text-body font-semibold text-fg">{formatShortDate(payment.date)}</div>
+        <div className="mt-0.5 text-prose font-normal text-fg-muted">
+          {payment.source} · {payment.reference}
+        </div>
       </TableCell>
-      <TableCell className="border-b border-hairline px-3 py-3 text-right text-body font-semibold text-fg tnum">
-        {formatINR(payment.amount)}
+
+      <TableCell className="py-3 text-right align-top">
+        <div className="tnum text-body font-semibold text-fg">{formatINR(payment.amount)}</div>
+        <div className={`mt-0.5 text-prose font-normal ${TONE_CLASS[payment.status_tone]}`}>
+          {payment.status_label}
+        </div>
       </TableCell>
-      <TableCell className="border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
-        {payment.source}
+
+      <TableCell className="py-3 align-top">
+        <span
+          className={`text-body font-semibold ${payment.is_applied ? "text-fg" : "text-danger"}`}
+        >
+          {payment.applied_to}
+        </span>
       </TableCell>
-      <TableCell className="border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
-        {allocatedTo}
-      </TableCell>
-      <TableCell className="border-b border-hairline px-3 py-3 text-right text-body font-semibold text-fg tnum">
-        {isZeroMoney(payment.unapplied) ? "—" : formatINR(payment.unapplied)}
+
+      <TableCell className="py-3 text-right align-top">
+        <AppButton variant="text" className="row-action">
+          {payment.action_label}
+        </AppButton>
       </TableCell>
     </TableRow>
+  );
+}
+
+function PaymentsLoading() {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-3 gap-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-card border border-hairline bg-card px-5 py-4">
+            <AppSkeleton className="h-7 w-32 rounded-check" />
+            <AppSkeleton className="mt-2 h-4 w-24 rounded-check" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-card border border-hairline bg-card p-4">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <AppSkeleton key={i} className="mb-3 h-11 w-full rounded-check" />
+        ))}
+      </div>
+    </div>
   );
 }

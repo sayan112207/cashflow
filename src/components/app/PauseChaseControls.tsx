@@ -1,62 +1,29 @@
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { AppButton } from "@/components/app/AppButton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePauseAccount, useResumeAccount } from "@/lib/queries/account-detail";
-import type { AccountDetail } from "@/lib/schemas/accounts";
+import { pauseReasonSchema, type AccountDetail, type PauseReason } from "@/lib/schemas/accounts";
 
 type PauseChaseControlsProps = {
   accountId: string;
   detail: AccountDetail;
 };
 
+const REASONS = pauseReasonSchema.options;
+
 /**
- * Header Pause / Resume. Pausing opens a confirm dialog that requires a reason.
+ * Header Pause / Resume. Pausing opens a popover with a fixed reason vocabulary.
  */
 export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProps) {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState<PauseReason>(REASONS[0]);
   const [until, setUntil] = useState("");
+
   const pauseMutation = usePauseAccount(accountId);
   const resumeMutation = useResumeAccount(accountId);
 
   const isPaused = detail.settings.paused_at !== null;
-
-  function openPauseDialog() {
-    setReason(detail.settings.pause_reason ?? "");
-    setUntil(detail.settings.paused_until ?? "");
-    setOpen(true);
-  }
-
-  function confirmPause() {
-    const trimmed = reason.trim();
-    if (!trimmed) return;
-    pauseMutation.mutate(
-      {
-        body: {
-          reason: trimmed,
-          ...(until.trim().length > 0 ? { until } : {}),
-        },
-        ifMatch: detail.updated_at,
-      },
-      {
-        onSuccess: () => {
-          setOpen(false);
-          setReason("");
-          setUntil("");
-          toast.success("Chasing paused.");
-        },
-      },
-    );
-  }
 
   if (isPaused) {
     return (
@@ -64,10 +31,7 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
         variant="secondary"
         loading={resumeMutation.isPending}
         onClick={() => {
-          resumeMutation.mutate(
-            { ifMatch: detail.updated_at },
-            { onSuccess: () => toast.success("Chasing resumed.") },
-          );
+          resumeMutation.mutate({ ifMatch: detail.updated_at });
         }}
       >
         Resume chasing
@@ -75,58 +39,80 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
     );
   }
 
+  function submitPause() {
+    pauseMutation.mutate(
+      {
+        body: { reason, ...(until.length > 0 ? { until } : {}) },
+        ifMatch: detail.updated_at,
+      },
+      { onSuccess: () => setOpen(false) },
+    );
+  }
+
   return (
-    <>
-      <AppButton variant="secondary" onClick={openPauseDialog}>
-        Pause chasing
-      </AppButton>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <AppButton variant="secondary">Pause chasing</AppButton>
+      </PopoverTrigger>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="rounded-card border-hairline bg-card text-fg shadow-overlay sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-section font-bold text-fg">Pause chasing</DialogTitle>
-            <DialogDescription className="text-prose font-normal text-fg-muted">
-              Reminders stop until you resume. A reason is required.
-            </DialogDescription>
-          </DialogHeader>
+      <PopoverContent align="end" className="w-[280px] rounded-card border-hairline bg-card p-4">
+        <fieldset className="border-0 p-0">
+          <legend className="text-eyebrow font-semibold tracking-[0.08em] text-fg-muted uppercase">
+            Reason
+          </legend>
 
-          <div className="space-y-3">
-            <label className="block text-prose font-semibold text-fg-muted">
-              Reason
-              <input
-                type="text"
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                className="mt-1 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg"
-                autoFocus
-              />
-            </label>
-            <label className="block text-prose font-semibold text-fg-muted">
-              Until (optional)
-              <input
-                type="date"
-                value={until}
-                onChange={(event) => setUntil(event.target.value)}
-                className="mt-1 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg"
-              />
-            </label>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {REASONS.map((option) => (
+              <label
+                key={option}
+                className="flex cursor-pointer items-center gap-2.5 text-body font-semibold text-fg"
+              >
+                <input
+                  type="radio"
+                  name="pause-reason"
+                  value={option}
+                  checked={reason === option}
+                  onChange={() => setReason(option)}
+                  className="h-3.5 w-3.5 accent-accent"
+                />
+                {option}
+              </label>
+            ))}
           </div>
+        </fieldset>
 
-          <DialogFooter className="gap-2 sm:gap-2">
-            <AppButton variant="secondary" onClick={() => setOpen(false)}>
-              Cancel
-            </AppButton>
-            <AppButton
-              variant="primary"
-              loading={pauseMutation.isPending}
-              disabled={reason.trim().length === 0}
-              onClick={confirmPause}
-            >
-              Pause chasing
-            </AppButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        <div className="mt-4">
+          <label
+            htmlFor="pause-until"
+            className="text-eyebrow font-semibold tracking-[0.08em] text-fg-muted uppercase"
+          >
+            Until <span className="font-normal normal-case">(optional)</span>
+          </label>
+          <input
+            id="pause-until"
+            type="date"
+            value={until}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={(event) => setUntil(event.target.value)}
+            className="mt-1.5 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg"
+          />
+        </div>
+
+        {pauseMutation.error ? (
+          <p role="alert" className="mt-3 text-prose font-normal text-danger">
+            {pauseMutation.error.message}
+          </p>
+        ) : null}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <AppButton variant="text" onClick={() => setOpen(false)}>
+            Cancel
+          </AppButton>
+          <AppButton variant="primary" loading={pauseMutation.isPending} onClick={submitPause}>
+            Confirm
+          </AppButton>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
