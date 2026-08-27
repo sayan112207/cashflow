@@ -3,23 +3,14 @@ import { getRouteApi } from "@tanstack/react-router";
 
 import { AppButton } from "@/components/app/AppButton";
 import { CadenceStepEditor } from "@/components/app/CadenceStepEditor";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatINR } from "@/lib/format";
 import {
   useArchiveAccount,
   useResumeAccount,
   useUpdateChasingSettings,
 } from "@/lib/queries/account-detail";
-import {
-  chaseStopReasonSchema,
-  tdsSectionSchema,
-  weekdaySchema,
-} from "@/lib/schemas/accounts";
+import { chaseStopReasonSchema, tdsSectionSchema, weekdaySchema } from "@/lib/schemas/accounts";
 import type {
   AccountDetail,
   CadenceStep,
@@ -40,8 +31,16 @@ const WEEKDAYS = weekdaySchema.options;
 const TDS_SECTIONS = tdsSectionSchema.options;
 
 const TIME_OPTIONS = [
-  "08:00", "09:00", "10:00", "11:00", "12:00",
-  "16:00", "17:00", "18:00", "19:00", "20:00",
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00",
+  "20:00",
 ];
 
 const accountDetailRoute = getRouteApi("/app/accounts/$accountId");
@@ -61,9 +60,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
 
   const [mode, setMode] = useState<ChaseMode>(s.chase_mode);
   const [steps, setSteps] = useState<CadenceStep[]>(s.steps);
-  const [stopReason, setStopReason] = useState<ChaseStopReason | "">(
-    s.stop_reason ?? "",
-  );
+  const [stopReason, setStopReason] = useState<ChaseStopReason | "">(s.stop_reason ?? "");
   const [stopNote, setStopNote] = useState(s.stop_note ?? "");
   const [windowMode, setWindowMode] = useState(s.send_window_mode);
   const [opensAt, setOpensAt] = useState(s.send_window.opens_at);
@@ -96,10 +93,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
   const diffCount = steps.filter((step) => {
     const d = defaultByKey[step.key];
     return (
-      d &&
-      (step.tone !== d.tone ||
-        step.channel !== d.channel ||
-        step.recipients !== d.recipients)
+      d && (step.tone !== d.tone || step.channel !== d.channel || step.recipients !== d.recipients)
     );
   }).length;
 
@@ -160,9 +154,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
           stop_note: mode === "stopped" ? stopNote || null : null,
           send_window_mode: windowMode,
           send_window:
-            windowMode === "custom"
-              ? { opens_at: opensAt, closes_at: closesAt, days }
-              : undefined,
+            windowMode === "custom" ? { opens_at: opensAt, closes_at: closesAt, days } : undefined,
           terms_preset: termsPreset,
           term_days: termDays,
           is_msme: isMsme,
@@ -228,9 +220,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
           {/* ── Chasing cadence ─────────────────────────────────────────── */}
           <section className="rounded-card border border-hairline bg-card p-5">
             <div className="flex items-center gap-2">
-              <h2 className="text-section font-bold tracking-tight text-fg">
-                Chasing cadence
-              </h2>
+              <h2 className="text-section font-bold tracking-tight text-fg">Chasing cadence</h2>
               {mode === "custom" ? (
                 <span className="rounded-pill bg-accent-tint px-2.5 py-0.5 text-pill font-semibold text-accent">
                   Custom cadence
@@ -239,9 +229,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
             </div>
 
             <fieldset className="mt-4 border-0 p-0">
-              <legend className="sr-only">
-                Chasing cadence for {detail.name}
-              </legend>
+              <legend className="sr-only">Chasing cadence for {detail.name}</legend>
               <div className="flex flex-col gap-2">
                 <ModeOption
                   name="chase-mode"
@@ -279,19 +267,17 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
                   {steps.map((step) => {
                     const defaultStep = defaultByKey[step.key] ?? step;
                     return (
-                    <CadenceStepEditor
-                      key={step.key}
-                      step={step}
-                      defaultStep={defaultStep}
-                      disabled={locked}
-                      onChange={(patch) =>
-                        setSteps((prev) =>
-                          prev.map((x) =>
-                            x.key === step.key ? { ...x, ...patch } : x,
-                          ),
-                        )
-                      }
-                    />
+                      <CadenceStepEditor
+                        key={step.key}
+                        step={step}
+                        defaultStep={defaultStep}
+                        disabled={locked}
+                        onChange={(patch) =>
+                          setSteps((prev) =>
+                            prev.map((x) => (x.key === step.key ? { ...x, ...patch } : x)),
+                          )
+                        }
+                      />
                     );
                   })}
                 </ol>
@@ -377,9 +363,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
           {/* ── Escalation contacts (read-only) ─────────────────────────── */}
           <section className="rounded-card border border-hairline bg-card p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-section font-bold tracking-tight text-fg">
-                Escalation contacts
-              </h2>
+              <h2 className="text-section font-bold tracking-tight text-fg">Escalation contacts</h2>
               <AppButton
                 variant="text"
                 onClick={() => {
@@ -409,9 +393,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
                   >
                     {contact.name ?? "No contact mapped"}
                   </span>
-                  <span className="text-prose font-normal text-fg-muted">
-                    {contact.detail}
-                  </span>
+                  <span className="text-prose font-normal text-fg-muted">{contact.detail}</span>
                 </li>
               ))}
             </ul>
@@ -425,9 +407,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
 
           {/* ── Send window ─────────────────────────────────────────────── */}
           <section className="rounded-card border border-hairline bg-card p-5">
-            <h2 className="text-section font-bold tracking-tight text-fg">
-              Send window
-            </h2>
+            <h2 className="text-section font-bold tracking-tight text-fg">Send window</h2>
 
             <fieldset className="mt-4 border-0 p-0">
               <legend className="sr-only">Send window for this account</legend>
@@ -460,9 +440,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
                     disabled={locked}
                     onChange={setOpensAt}
                   />
-                  <span className="pb-2 text-prose font-normal text-fg-muted">
-                    to
-                  </span>
+                  <span className="pb-2 text-prose font-normal text-fg-muted">to</span>
                   <TimeSelect
                     id="window-close"
                     label="Send window closes at"
@@ -494,9 +472,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
                             disabled={locked}
                             onChange={() =>
                               setDays((prev) =>
-                                on
-                                  ? prev.filter((d) => d !== day)
-                                  : [...prev, day],
+                                on ? prev.filter((d) => d !== day) : [...prev, day],
                               )
                             }
                             className="sr-only"
@@ -517,9 +493,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
 
           {/* ── Account terms ───────────────────────────────────────────── */}
           <section className="rounded-card border border-hairline bg-card p-5">
-            <h2 className="text-section font-bold tracking-tight text-fg">
-              Account terms
-            </h2>
+            <h2 className="text-section font-bold tracking-tight text-fg">Account terms</h2>
 
             <div className="mt-4 flex flex-col gap-4">
               <div className="max-w-[240px]">
@@ -615,8 +589,8 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
               </div>
 
               <p className="text-prose font-normal text-fg-muted">
-                Receivables are carried gross. TDS fields record what to expect
-                at payment time; they never reduce the outstanding figure.
+                Receivables are carried gross. TDS fields record what to expect at payment time;
+                they never reduce the outstanding figure.
               </p>
 
               <label className="flex cursor-pointer items-start gap-2.5">
@@ -641,9 +615,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
 
           {/* ── Ownership and notes ─────────────────────────────────────── */}
           <section className="rounded-card border border-hairline bg-card p-5">
-            <h2 className="text-section font-bold tracking-tight text-fg">
-              Ownership and notes
-            </h2>
+            <h2 className="text-section font-bold tracking-tight text-fg">Ownership and notes</h2>
 
             <div className="mt-4 flex flex-col gap-4">
               <div className="max-w-[280px]">
@@ -674,8 +646,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
                   htmlFor="account-notes"
                   className="text-eyebrow font-semibold uppercase tracking-[0.08em] text-fg-muted"
                 >
-                  Notes{" "}
-                  <span className="font-normal normal-case">(optional)</span>
+                  Notes <span className="font-normal normal-case">(optional)</span>
                 </label>
                 <textarea
                   id="account-notes"
@@ -711,19 +682,13 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
 
       {/* ── Danger zone ───────────────────────────────────────────────── */}
       <section className="rounded-card border border-danger-edge bg-card p-5">
-        <h2 className="text-section font-bold tracking-tight text-danger">
-          Danger zone
-        </h2>
+        <h2 className="text-section font-bold tracking-tight text-danger">Danger zone</h2>
         <p className="mt-2 text-prose font-normal text-fg-soft">
-          Stops every reminder and moves this account out of your working list.
-          Invoices and history are kept.
+          Stops every reminder and moves this account out of your working list. Invoices and history
+          are kept.
         </p>
         <div className="mt-3">
-          <AppButton
-            variant="destructive"
-            disabled={!canEdit}
-            onClick={() => setArchiveOpen(true)}
-          >
+          <AppButton variant="destructive" disabled={!canEdit} onClick={() => setArchiveOpen(true)}>
             Stop all chasing and archive this account
           </AppButton>
         </div>
@@ -764,9 +729,7 @@ function cloneSteps(steps: CadenceStep[]): CadenceStep[] {
   }));
 }
 
-function snapshotFromSettings(
-  settings: AccountDetail["settings"],
-): SettingsSnapshot {
+function snapshotFromSettings(settings: AccountDetail["settings"]): SettingsSnapshot {
   return {
     mode: settings.chase_mode,
     steps: cloneSteps(settings.steps),
@@ -807,10 +770,7 @@ function daysEqual(a: Weekday[], b: Weekday[]): boolean {
   return sortedA.every((day, index) => day === sortedB[index]);
 }
 
-function snapshotsEqual(
-  current: SettingsSnapshot,
-  initial: SettingsSnapshot,
-): boolean {
+function snapshotsEqual(current: SettingsSnapshot, initial: SettingsSnapshot): boolean {
   return (
     current.mode === initial.mode &&
     current.stopReason === initial.stopReason &&
@@ -862,9 +822,7 @@ function ModeOption({
       <span>
         <span className="block text-body font-semibold text-fg">{title}</span>
         {description ? (
-          <span className="block text-prose font-normal text-fg-muted">
-            {description}
-          </span>
+          <span className="block text-prose font-normal text-fg-muted">{description}</span>
         ) : null}
       </span>
     </label>
@@ -929,9 +887,8 @@ function ArchiveDialog({
           Archive {detail.name}?
         </DialogTitle>
         <DialogDescription className="mt-2 text-prose font-normal text-fg-soft">
-          {formatINR(detail.outstanding)} is still outstanding on this account.
-          Archiving stops all chasing. Type{" "}
-          <span className="font-semibold text-fg">{target}</span> to confirm.
+          {formatINR(detail.outstanding)} is still outstanding on this account. Archiving stops all
+          chasing. Type <span className="font-semibold text-fg">{target}</span> to confirm.
         </DialogDescription>
 
         <label htmlFor="archive-confirm" className="sr-only">

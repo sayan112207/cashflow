@@ -27,12 +27,7 @@ type Props = {
   onChange: (patch: Partial<CadenceStep>) => void;
 };
 
-export function CadenceStepEditor({
-  step,
-  defaultStep,
-  disabled,
-  onChange,
-}: Props) {
+export function CadenceStepEditor({ step, defaultStep, disabled, onChange }: Props) {
   const differs =
     step.tone !== defaultStep.tone ||
     step.channel !== defaultStep.channel ||
@@ -82,9 +77,7 @@ export function CadenceStepEditor({
               label: c.label,
               disabled: !step.allowed_channels.includes(c.value),
             };
-            return c.value === "voice"
-              ? { ...option, describedBy: voiceHintId }
-              : option;
+            return c.value === "voice" ? { ...option, describedBy: voiceHintId } : option;
           })}
           value={step.channel}
           onChange={(v) => onChange({ channel: v as CadenceChannel })}
@@ -107,9 +100,7 @@ export function CadenceStepEditor({
             id={`recipients-${step.key}`}
             value={step.recipients}
             disabled={disabled}
-            onChange={(e) =>
-              onChange({ recipients: e.target.value as CadenceRecipients })
-            }
+            onChange={(e) => onChange({ recipients: e.target.value as CadenceRecipients })}
             className="mt-1.5 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg disabled:opacity-55"
           >
             {RECIPIENTS.map((r) => (
@@ -164,9 +155,7 @@ function PillGroup({
                   ? "border-accent-edge bg-accent-tint text-accent"
                   : "border-stroke bg-card text-fg-soft"
               } ${
-                isDisabled
-                  ? "cursor-not-allowed opacity-45"
-                  : "cursor-pointer hover:bg-hovered"
+                isDisabled ? "cursor-not-allowed opacity-45" : "cursor-pointer hover:bg-hovered"
               }`}
             >
               <input

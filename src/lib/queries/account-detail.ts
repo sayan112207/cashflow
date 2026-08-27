@@ -52,8 +52,7 @@ function applyChasingSettingsPatch(
 
   if (body.chase_mode === "stopped" && body.stop_reason) {
     next.paused_at = settings.paused_at ?? new Date().toISOString();
-    next.pause_reason =
-      body.stop_reason === "Relationship hold" ? "Other" : body.stop_reason;
+    next.pause_reason = body.stop_reason === "Relationship hold" ? "Other" : body.stop_reason;
   }
 
   return next;
