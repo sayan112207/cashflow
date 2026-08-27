@@ -7,6 +7,7 @@ import { AccountActivityPanel } from "@/components/app/AccountActivityPanel";
 import { AccountContactsPanel } from "@/components/app/AccountContactsPanel";
 import { AccountInvoicesPanel } from "@/components/app/AccountInvoicesPanel";
 import { AccountPaymentsPanel } from "@/components/app/AccountPaymentsPanel";
+import { AccountRecommendationStrip } from "@/components/app/AccountRecommendationStrip";
 import { AccountSettingsPanel } from "@/components/app/AccountSettingsPanel";
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
@@ -102,6 +103,7 @@ function AccountDetailPage() {
     <div className="space-y-8">
       <AccountHeaderCard accountId={accountId} detail={detail} />
       <AgingBar segments={detail.aging} />
+      <AccountRecommendationStrip recommendation={detail.recommendation} />
       <AccountDetailTabs
         accountId={accountId}
         accountName={detail.name}
