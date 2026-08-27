@@ -83,6 +83,49 @@ export const paymentActionKindSchema = z.enum(["adjust", "view_split", "allocate
 
 export const activityToneSchema = z.enum(["neutral", "warn", "danger"]);
 
+export const chaseModeSchema = z.enum(["default", "custom", "stopped"]);
+
+export const cadenceToneSchema = z.enum(["Gentle", "Standard", "Firm"]);
+
+export const cadenceChannelSchema = z.enum(["email", "whatsapp", "both", "voice"]);
+
+export const cadenceRecipientsSchema = z.enum(["p0", "p0p1", "p0p1p2"]);
+
+/** Shared vocabulary for header pause and settings stop — one list on the wire. */
+export const chaseStopReasonSchema = z.enum([
+  "Dispute",
+  "Payment plan agreed",
+  "Client request",
+  "Relationship hold",
+  "Other",
+]);
+
+export const weekdaySchema = z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+
+export const paymentTermsPresetSchema = z.enum(["net_30", "net_45", "custom"]);
+
+export const cadenceStepSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  tone: cadenceToneSchema,
+  channel: cadenceChannelSchema,
+  recipients: cadenceRecipientsSchema,
+  needs_approval: z.boolean(),
+  allowed_channels: z.array(cadenceChannelSchema),
+});
+
+export const sendWindowSchema = z.object({
+  opens_at: z.string(),
+  closes_at: z.string(),
+  days: z.array(weekdaySchema),
+});
+
+export const escalationContactSchema = z.object({
+  tier: contactTierSchema,
+  name: z.string().nullable(),
+  detail: z.string(),
+});
+
 export const accountsListFilterSchema = z.enum(["has_overdue", "missing_contacts", "paused"]);
 
 export const accountsSortColumnSchema = z.enum([
@@ -177,17 +220,31 @@ export const accountsListSchema = z.object({
   items: z.array(accountListItemSchema),
 });
 
-export const accountSettingsSchema = z.object({
-  default_credit_days: z.number().int().positive(),
-  currency: z.literal("INR"),
+export const accountChasingSettingsSchema = z.object({
+  chase_mode: chaseModeSchema,
+  steps: z.array(cadenceStepSchema),
+  default_steps: z.array(cadenceStepSchema),
+  default_summary: z.string(),
+  stop_reason: chaseStopReasonSchema.nullable(),
+  stop_note: z.string().nullable(),
+  send_window_mode: z.enum(["default", "custom"]),
+  send_window: sendWindowSchema,
+  default_send_window: sendWindowSchema,
+  terms_preset: paymentTermsPresetSchema,
+  term_days: z.number().int().positive(),
+  is_msme: z.boolean(),
   tds_section: tdsSectionSchema,
-  tds_rate: z.number().min(0).max(100),
+  tds_rate: z.number().min(0).max(30).nullable(),
+  owner_user_id: z.string().nullable(),
+  owner_name: z.string().nullable(),
+  assignable_owners: z.array(z.object({ id: z.string(), name: z.string() })),
+  notes: z.string().nullable(),
+  can_edit: z.boolean(),
+  archived_at: z.string().nullable(),
+  /** Header pause controls read these — stay on settings, not the detail root. */
   paused_at: isoDatetime.nullable(),
   pause_reason: pauseReasonSchema.nullable(),
   paused_until: isoDate.nullable(),
-  owner_user_id: z.string().uuid().nullable(),
-  owner_name: z.string().nullable(),
-  notes: z.string().nullable(),
 });
 
 /**
@@ -210,7 +267,7 @@ export const accountDetailSchema = z.object({
   last_synced_at: isoDatetime,
   updated_at: isoDatetime,
   aging: accountAgingSchema,
-  settings: accountSettingsSchema,
+  settings: accountChasingSettingsSchema,
   /** Backend-composed action strip. `null` when nothing to show. */
   recommendation: accountRecommendationSchema.nullable(),
 });
@@ -405,6 +462,16 @@ export type ActivityKind = z.infer<typeof activityKindSchema>;
 export type TdsSection = z.infer<typeof tdsSectionSchema>;
 export type ContactLanguage = z.infer<typeof contactLanguageSchema>;
 export type PauseReason = z.infer<typeof pauseReasonSchema>;
+export type ChaseMode = z.infer<typeof chaseModeSchema>;
+export type CadenceTone = z.infer<typeof cadenceToneSchema>;
+export type CadenceChannel = z.infer<typeof cadenceChannelSchema>;
+export type CadenceRecipients = z.infer<typeof cadenceRecipientsSchema>;
+export type ChaseStopReason = z.infer<typeof chaseStopReasonSchema>;
+export type Weekday = z.infer<typeof weekdaySchema>;
+export type PaymentTermsPreset = z.infer<typeof paymentTermsPresetSchema>;
+export type CadenceStep = z.infer<typeof cadenceStepSchema>;
+export type SendWindow = z.infer<typeof sendWindowSchema>;
+export type EscalationContact = z.infer<typeof escalationContactSchema>;
 export type AccountRecommendation = z.infer<typeof accountRecommendationSchema>;
 export type PaymentTone = z.infer<typeof paymentToneSchema>;
 export type PaymentActionKind = z.infer<typeof paymentActionKindSchema>;
@@ -417,7 +484,7 @@ export type AccountDetailTab = z.infer<typeof accountDetailTabSchema>;
 export type AccountDetailSearch = z.infer<typeof accountDetailSearchSchema>;
 export type AccountListItem = z.infer<typeof accountListItemSchema>;
 export type AccountsList = z.infer<typeof accountsListSchema>;
-export type AccountSettings = z.infer<typeof accountSettingsSchema>;
+export type AccountChasingSettings = z.infer<typeof accountChasingSettingsSchema>;
 export type AccountDetail = z.infer<typeof accountDetailSchema>;
 export type AccountInvoice = z.infer<typeof accountInvoiceSchema>;
 export type AccountInvoiceGroup = z.infer<typeof accountInvoiceGroupSchema>;
