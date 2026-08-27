@@ -63,6 +63,26 @@ export const tdsSectionSchema = z.enum(["194C", "194J", "194H", "194I", "None"])
 
 export const contactLanguageSchema = z.enum(["en", "hi", "ta", "te", "mr", "gu", "bn", "kn"]);
 
+/** Fixed vocabulary — wire enum; backend migrates `accounts.pause_reason` from text. */
+export const pauseReasonSchema = z.enum([
+  "Dispute",
+  "Payment plan agreed",
+  "Client request",
+  "Other",
+]);
+
+export const accountRecommendationSchema = z.object({
+  sentence: z.string(),
+  action_label: z.string(),
+  action_href: z.string(),
+});
+
+export const paymentToneSchema = z.enum(["muted", "warn", "danger"]);
+
+export const paymentActionKindSchema = z.enum(["adjust", "view_split", "allocate"]);
+
+export const activityToneSchema = z.enum(["neutral", "warn", "danger"]);
+
 export const accountsListFilterSchema = z.enum(["has_overdue", "missing_contacts", "paused"]);
 
 export const accountsSortColumnSchema = z.enum([
@@ -163,7 +183,7 @@ export const accountSettingsSchema = z.object({
   tds_section: tdsSectionSchema,
   tds_rate: z.number().min(0).max(100),
   paused_at: isoDatetime.nullable(),
-  pause_reason: z.string().nullable(),
+  pause_reason: pauseReasonSchema.nullable(),
   paused_until: isoDate.nullable(),
   owner_user_id: z.string().uuid().nullable(),
   owner_name: z.string().nullable(),
@@ -191,6 +211,8 @@ export const accountDetailSchema = z.object({
   updated_at: isoDatetime,
   aging: accountAgingSchema,
   settings: accountSettingsSchema,
+  /** Backend-composed action strip. `null` when nothing to show. */
+  recommendation: accountRecommendationSchema.nullable(),
 });
 
 export const accountInvoiceSchema = z.object({
@@ -254,30 +276,45 @@ export const paymentAllocationSchema = z.object({
 });
 
 export const accountPaymentSchema = z.object({
-  payment_id: z.string().uuid(),
-  received_on: isoDate,
-  amount: moneyString,
+  payment_id: z.string(),
+  date: isoDate,
   source: paymentSourceSchema,
-  reference: z.string().nullable(),
+  reference: z.string(),
+  amount: moneyString,
+  /** e.g. `"INV-1038, INV-1040"` or `"Not applied"`. */
+  applied_to: z.string(),
+  is_applied: z.boolean(),
+  /** Backend-composed copy — render verbatim. */
+  status_label: z.string(),
+  status_tone: paymentToneSchema,
+  action_label: z.string(),
+  action_kind: paymentActionKindSchema,
   allocations: z.array(paymentAllocationSchema),
-  unapplied: moneyString,
+});
+
+export const accountPaymentStatsSchema = z.object({
+  received_90d: moneyString,
+  unapplied_total: moneyString,
+  average_delay_days: z.number().int().nullable(),
 });
 
 /** `GET /api/v1/accounts/{id}/payments` */
 export const accountPaymentsSchema = z.object({
-  account_id: z.string().uuid(),
-  unapplied_total: moneyString,
+  stats: accountPaymentStatsSchema,
   items: z.array(accountPaymentSchema),
 });
 
 export const accountActivityItemSchema = z.object({
-  activity_id: z.string().uuid(),
+  activity_id: z.string(),
   kind: activityKindSchema,
-  /** Backend-composed sentence. Frontend renders verbatim. */
-  summary: z.string().min(1),
+  when_label: z.string(),
   occurred_at: isoDatetime,
-  invoice_id: z.string().uuid().nullable(),
-  contact_id: z.string().uuid().nullable(),
+  title: z.string(),
+  title_tone: activityToneSchema,
+  detail: z.string(),
+  link_label: z.string().nullable(),
+  /** App-relative path — render as `<a href>`, not TanStack `<Link>`. */
+  link_href: z.string().nullable(),
 });
 
 /** `GET /api/v1/accounts/{id}/activity` */
@@ -330,13 +367,13 @@ export const accountSettingsFormSchema = z
     tds_section: tdsSectionSchema,
     tds_rate: z.number().min(0).max(100),
     paused: z.boolean(),
-    pause_reason: z.string(),
+    pause_reason: pauseReasonSchema,
     paused_until: z.string(),
     owner_user_id: z.string().uuid().nullable(),
     notes: z.string(),
   })
   .superRefine((value, ctx) => {
-    if (value.paused && value.pause_reason.trim().length === 0) {
+    if (value.paused && !pauseReasonSchema.safeParse(value.pause_reason).success) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Add a reason before pausing.",
@@ -353,7 +390,7 @@ export const accountSettingsFormSchema = z
   });
 
 export const pauseAccountBodySchema = z.object({
-  reason: z.string().min(1),
+  reason: pauseReasonSchema,
   until: isoDate.optional(),
 });
 
@@ -367,6 +404,11 @@ export type PaymentSource = z.infer<typeof paymentSourceSchema>;
 export type ActivityKind = z.infer<typeof activityKindSchema>;
 export type TdsSection = z.infer<typeof tdsSectionSchema>;
 export type ContactLanguage = z.infer<typeof contactLanguageSchema>;
+export type PauseReason = z.infer<typeof pauseReasonSchema>;
+export type AccountRecommendation = z.infer<typeof accountRecommendationSchema>;
+export type PaymentTone = z.infer<typeof paymentToneSchema>;
+export type PaymentActionKind = z.infer<typeof paymentActionKindSchema>;
+export type ActivityTone = z.infer<typeof activityToneSchema>;
 export type AccountsListFilter = z.infer<typeof accountsListFilterSchema>;
 export type AccountsSortColumn = z.infer<typeof accountsSortColumnSchema>;
 export type AccountsSortDir = z.infer<typeof accountsSortDirSchema>;
@@ -383,6 +425,7 @@ export type AccountInvoices = z.infer<typeof accountInvoicesSchema>;
 export type AccountContact = z.infer<typeof accountContactSchema>;
 export type AccountContacts = z.infer<typeof accountContactsSchema>;
 export type AccountPayment = z.infer<typeof accountPaymentSchema>;
+export type AccountPaymentStats = z.infer<typeof accountPaymentStatsSchema>;
 export type AccountPayments = z.infer<typeof accountPaymentsSchema>;
 export type AccountActivityItem = z.infer<typeof accountActivityItemSchema>;
 export type AccountActivity = z.infer<typeof accountActivitySchema>;
