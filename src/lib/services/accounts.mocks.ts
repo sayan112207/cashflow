@@ -59,11 +59,20 @@ const INVOICE_IDS = {
   inv2104: "d0c00016-0000-4000-8000-000000002104",
   inv2015: "d0c00017-0000-4000-8000-000000002015",
   inv2008: "d0c00018-0000-4000-8000-000000002008",
+  inv1042: "d0c00020-0000-4000-8000-000000001042",
+  inv1041: "d0c00021-0000-4000-8000-000000001041",
+  inv1040: "d0c00022-0000-4000-8000-000000001040",
+  inv1038: "d0c00023-0000-4000-8000-000000001038",
+  inv1026: "d0c00024-0000-4000-8000-000000001026",
+  inv1019: "d0c00025-0000-4000-8000-000000001019",
 } as const;
 
 const PAYMENT_IDS = {
   p1: "a0f00001-0000-4000-8000-000000000001",
   p2: "a0f00002-0000-4000-8000-000000000002",
+  p3: "a0f00003-0000-4000-8000-000000000003",
+  p4: "a0f00004-0000-4000-8000-000000000004",
+  p5: "a0f00005-0000-4000-8000-000000000005",
 } as const;
 
 const ACTIVITY_IDS = {
@@ -72,6 +81,8 @@ const ACTIVITY_IDS = {
   a3: "a0700003-0000-4000-8000-000000000003",
   a4: "a0700004-0000-4000-8000-000000000004",
   a5: "a0700005-0000-4000-8000-000000000005",
+  a6: "a0700006-0000-4000-8000-000000000006",
+  a7: "a0700007-0000-4000-8000-000000000007",
 } as const;
 
 /** Spec reference date: Monday 17 August 2026. */
@@ -272,12 +283,13 @@ export const sharmaDetailFixture: AccountDetail = {
     tds_section: "194J",
     tds_rate: 10,
     paused_at: BOUNCED_NINE_DAYS_AGO,
-    pause_reason: "Email bouncing",
+    pause_reason: "Other",
     paused_until: null,
     owner_user_id: USER_IDS.priya,
     owner_name: "Priya Nair",
     notes: null,
   },
+  recommendation: null,
 };
 
 /** Spec §3 — nine invoices grouped by aging bucket. */
@@ -477,87 +489,198 @@ export const sharmaContactsFixture: AccountContacts = {
   ],
 };
 
-/** Spec §5 — two payments; ₹12,000 unapplied on the Manual one. */
+/** Sharma Traders — five payments; ₹8,000 unapplied on the Statement receipt. */
 export const sharmaPaymentsFixture: AccountPayments = {
-  account_id: ACCOUNT_IDS.sharma,
-  unapplied_total: "12000.00",
+  stats: {
+    received_90d: "618000.00",
+    unapplied_total: "8000.00",
+    average_delay_days: 34,
+  },
   items: [
     {
       payment_id: PAYMENT_IDS.p1,
-      received_on: "2026-08-04",
-      amount: "40000.00",
+      date: "2026-08-08",
       source: "Bank alert",
-      reference: null,
+      reference: "UTR HDFC0004521XXXXX",
+      amount: "108000.00",
+      applied_to: "INV-1041",
+      is_applied: true,
+      status_label: "TDS shortfall ₹10,000",
+      status_tone: "warn",
+      action_label: "Adjust",
+      action_kind: "adjust",
       allocations: [
         {
-          invoice_id: INVOICE_IDS.inv2231,
-          invoice_number: "INV-2231",
-          amount: "40000.00",
+          invoice_id: INVOICE_IDS.inv1041,
+          invoice_number: "INV-1041",
+          amount: "108000.00",
         },
       ],
-      unapplied: "0.00",
     },
     {
       payment_id: PAYMENT_IDS.p2,
-      received_on: "2026-07-22",
-      amount: "60000.00",
-      source: "Manual",
-      reference: null,
+      date: "2026-07-24",
+      source: "Bank alert",
+      reference: "UTR ICIC0009812XXXXX",
+      amount: "200000.00",
+      applied_to: "INV-1038, INV-1040",
+      is_applied: true,
+      status_label: "Settled in full",
+      status_tone: "muted",
+      action_label: "View split",
+      action_kind: "view_split",
       allocations: [
         {
-          invoice_id: INVOICE_IDS.inv2166,
-          invoice_number: "INV-2166",
-          amount: "48000.00",
+          invoice_id: INVOICE_IDS.inv1038,
+          invoice_number: "INV-1038",
+          amount: "100000.00",
+        },
+        {
+          invoice_id: INVOICE_IDS.inv1040,
+          invoice_number: "INV-1040",
+          amount: "100000.00",
         },
       ],
-      unapplied: "12000.00",
+    },
+    {
+      payment_id: PAYMENT_IDS.p3,
+      date: "2026-07-11",
+      source: "Manual",
+      reference: "Cheque 448120",
+      amount: "140000.00",
+      applied_to: "INV-1026",
+      is_applied: true,
+      status_label: "Settled in full",
+      status_tone: "muted",
+      action_label: "View split",
+      action_kind: "view_split",
+      allocations: [
+        {
+          invoice_id: INVOICE_IDS.inv1026,
+          invoice_number: "INV-1026",
+          amount: "140000.00",
+        },
+      ],
+    },
+    {
+      payment_id: PAYMENT_IDS.p4,
+      date: "2026-07-02",
+      source: "Bank alert",
+      reference: "UTR HDFC0004102XXXXX",
+      amount: "162000.00",
+      applied_to: "INV-1019",
+      is_applied: true,
+      status_label: "Settled in full",
+      status_tone: "muted",
+      action_label: "View split",
+      action_kind: "view_split",
+      allocations: [
+        {
+          invoice_id: INVOICE_IDS.inv1019,
+          invoice_number: "INV-1019",
+          amount: "162000.00",
+        },
+      ],
+    },
+    {
+      payment_id: PAYMENT_IDS.p5,
+      date: "2026-06-19",
+      source: "Statement",
+      reference: "NEFT — no remitter name",
+      amount: "8000.00",
+      applied_to: "Not applied",
+      is_applied: false,
+      status_label: "Held as credit · needs review",
+      status_tone: "danger",
+      action_label: "Allocate",
+      action_kind: "allocate",
+      allocations: [],
     },
   ],
 };
 
-/** Spec §6 — five activity entries, reverse chronological. */
+/** Sharma Traders — seven activity entries, reverse chronological. */
 export const sharmaActivityFixture: AccountActivity = {
   account_id: ACCOUNT_IDS.sharma,
   items: [
     {
       activity_id: ACTIVITY_IDS.a1,
-      kind: "bounce",
-      summary: "Rajat Mehta's email bounced.",
-      occurred_at: BOUNCED_NINE_DAYS_AGO,
-      invoice_id: null,
-      contact_id: CONTACT_IDS.rajat,
+      kind: "message_sent",
+      when_label: "Today · 09:12",
+      occurred_at: "2026-08-17T09:12:00+05:30",
+      title: "Standard reminder sent to Rajat Mehta",
+      title_tone: "neutral",
+      detail: "Invoice INV-1042 — ₹54,000. Delivered 09:13.",
+      link_label: null,
+      link_href: null,
     },
     {
       activity_id: ACTIVITY_IDS.a2,
-      kind: "payment_received",
-      summary: "₹40,000 payment received, allocated to INV-2231.",
-      occurred_at: "2026-08-04T10:00:00+05:30",
-      invoice_id: INVOICE_IDS.inv2231,
-      contact_id: null,
+      kind: "promise_made",
+      when_label: "12 Aug · 16:40",
+      occurred_at: "2026-08-12T16:40:00+05:30",
+      title: "Promised 22 Aug 2026",
+      title_tone: "warn",
+      detail:
+        "Rajat Mehta committed to ₹54,000 from the debtor page. Reminders paused until then.",
+      link_label: null,
+      link_href: null,
     },
     {
       activity_id: ACTIVITY_IDS.a3,
-      kind: "promise_made",
-      summary: "INV-2240 marked as promised for 25 August.",
-      occurred_at: "2026-07-30T10:00:00+05:30",
-      invoice_id: INVOICE_IDS.inv2240,
-      contact_id: null,
+      kind: "payment_received",
+      when_label: "08 Aug · 11:02",
+      occurred_at: "2026-08-08T11:02:00+05:30",
+      title: "Payment received — ₹1,08,000",
+      title_tone: "neutral",
+      detail: "Against INV-1041. ₹10,000 shortfall explained as 194J TDS.",
+      link_label: null,
+      link_href: null,
     },
     {
       activity_id: ACTIVITY_IDS.a4,
-      kind: "contact_added",
-      summary: "Rajesh Kumar added as P1 contact.",
-      occurred_at: "2026-07-22T10:00:00+05:30",
-      invoice_id: null,
-      contact_id: CONTACT_IDS.rajesh,
+      kind: "bounce",
+      when_label: "05 Aug · 09:00",
+      occurred_at: "2026-08-05T09:00:00+05:30",
+      title: "Email bounced",
+      title_tone: "danger",
+      detail:
+        "priya@sharmatraders.com is no longer valid. Replaced with rajat@sharmatraders.com.",
+      link_label: "Open contacts",
+      link_href: `/app/accounts/${ACCOUNT_IDS.sharma}?tab=contacts`,
     },
     {
       activity_id: ACTIVITY_IDS.a5,
+      kind: "message_sent",
+      when_label: "02 Aug · 15:20",
+      occurred_at: "2026-08-02T15:20:00+05:30",
+      title: "Send window overridden",
+      title_tone: "neutral",
+      detail: "Priya Nair set a 9 AM–2 PM window for this account.",
+      link_label: "Open settings",
+      link_href: `/app/accounts/${ACCOUNT_IDS.sharma}?tab=settings`,
+    },
+    {
+      activity_id: ACTIVITY_IDS.a6,
       kind: "import",
-      summary: "9 invoices imported from Tally export.",
-      occurred_at: "2026-06-17T10:00:00+05:30",
-      invoice_id: null,
-      contact_id: null,
+      when_label: "28 Jul · 10:44",
+      occurred_at: "2026-07-28T10:44:00+05:30",
+      title: "9 invoices imported from Tally",
+      title_tone: "neutral",
+      detail: "₹4,82,000 total.",
+      link_label: null,
+      link_href: null,
+    },
+    {
+      activity_id: ACTIVITY_IDS.a7,
+      kind: "invoice_created",
+      when_label: "19 Jun · 12:05",
+      occurred_at: "2026-06-19T12:05:00+05:30",
+      title: "Account created",
+      title_tone: "neutral",
+      detail: "From the first Tally import. GSTIN 27AAECS4321B1Z9.",
+      link_label: null,
+      link_href: null,
     },
   ],
 };
@@ -595,6 +718,7 @@ export const kaveriDetailFixture: AccountDetail = {
     owner_name: "Priya Nair",
     notes: null,
   },
+  recommendation: null,
 };
 
 export const kaveriContactsFixture: AccountContacts = {
@@ -793,12 +917,13 @@ function synthesizeDetailFromListItem(item: AccountListItem): AccountDetail {
       tds_section: "None",
       tds_rate: 0,
       paused_at: item.chase_status === "paused" ? SYNCED_TWO_DAYS_AGO : null,
-      pause_reason: item.chase_status === "paused" ? "Paused" : null,
+      pause_reason: item.chase_status === "paused" ? "Other" : null,
       paused_until: null,
       owner_user_id: USER_IDS.priya,
       owner_name: "Priya Nair",
       notes: null,
     },
+    recommendation: null,
   };
 }
 
@@ -847,7 +972,14 @@ export function getMockAccountPayments(accountId: string): AccountPayments | und
   const payments = mockStore.payments[accountId];
   if (payments) return structuredClone(payments);
   if (accountExists(accountId)) {
-    return { account_id: accountId, unapplied_total: "0.00", items: [] };
+    return {
+      stats: {
+        received_90d: "0.00",
+        unapplied_total: "0.00",
+        average_delay_days: null,
+      },
+      items: [],
+    };
   }
   return undefined;
 }
@@ -879,20 +1011,24 @@ function usableP0Count(contacts: AccountContacts): number {
 function appendActivity(
   accountId: string,
   kind: AccountActivity["items"][number]["kind"],
-  summary: string,
-  contactId: string | null = null,
+  title: string,
+  detail = "",
 ): void {
   const log = mockStore.activity[accountId] ?? {
     account_id: accountId,
     items: [],
   };
+  const occurredAt = bumpUpdatedAt();
   log.items.unshift({
     activity_id: crypto.randomUUID(),
     kind,
-    summary,
-    occurred_at: bumpUpdatedAt(),
-    invoice_id: null,
-    contact_id: contactId,
+    when_label: "Just now",
+    occurred_at: occurredAt,
+    title,
+    title_tone: "neutral",
+    detail,
+    link_label: null,
+    link_href: null,
   });
   mockStore.activity[accountId] = log;
 }
@@ -979,7 +1115,7 @@ export function mockUpdateContact(
 
   Object.assign(contact, body, { updated_at: bumpUpdatedAt() });
   contacts.updated_at = contact.updated_at;
-  appendActivity(accountId, "contact_edited", `${contact.name} updated.`, contactId);
+  appendActivity(accountId, "contact_edited", `${contact.name} updated.`);
   return structuredClone(contacts);
 }
 
@@ -1011,7 +1147,7 @@ export function mockDeleteContact(
   const name = contact.name;
   contacts.contacts = contacts.contacts.filter((c) => c.contact_id !== contactId);
   contacts.updated_at = bumpUpdatedAt();
-  appendActivity(accountId, "contact_removed", `${name} removed.`, contactId);
+  appendActivity(accountId, "contact_removed", `${name} removed.`);
   return structuredClone(contacts);
 }
 
@@ -1093,7 +1229,7 @@ export function mockPauseAccount(
       "Someone else changed this account. Reload and try again.",
     );
   }
-  if (!body.reason.trim()) {
+  if (!body.reason) {
     throw new MockAccountsConflictError("pause_reason_required", "Add a reason before pausing.");
   }
   const now = bumpUpdatedAt();
