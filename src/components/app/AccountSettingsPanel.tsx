@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { getRouteApi } from "@tanstack/react-router";
 
 import { AppButton } from "@/components/app/AppButton";
 import { CadenceStepEditor } from "@/components/app/CadenceStepEditor";
@@ -43,6 +44,8 @@ const TIME_OPTIONS = [
   "16:00", "17:00", "18:00", "19:00", "20:00",
 ];
 
+const accountDetailRoute = getRouteApi("/app/accounts/$accountId");
+
 function formatTime(value: string) {
   const [hStr, mStr] = value.split(":");
   const h = Number(hStr);
@@ -54,6 +57,7 @@ function formatTime(value: string) {
 
 export function AccountSettingsPanel({ accountId, detail }: Props) {
   const s = detail.settings;
+  const navigate = accountDetailRoute.useNavigate();
 
   const [mode, setMode] = useState<ChaseMode>(s.chase_mode);
   const [steps, setSteps] = useState<CadenceStep[]>(s.steps);
@@ -376,7 +380,17 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
               <h2 className="text-section font-bold tracking-tight text-fg">
                 Escalation contacts
               </h2>
-              <AppButton variant="text">Edit in Contacts</AppButton>
+              <AppButton
+                variant="text"
+                onClick={() => {
+                  void navigate({
+                    search: (prev) => ({ ...prev, tab: "contacts" }),
+                    replace: true,
+                  });
+                }}
+              >
+                Edit in Contacts
+              </AppButton>
             </div>
 
             <ul className="mt-4 flex flex-col gap-2">
