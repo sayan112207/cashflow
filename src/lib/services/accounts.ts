@@ -10,11 +10,12 @@ import {
   accountsListFilterSchema,
   accountsListSchema,
   accountsSortDirSchema,
+  archiveAccountBodySchema,
   createContactBodySchema,
   pauseAccountBodySchema,
+  updateChasingSettingsBodySchema,
   updateContactBodySchema,
   updateEscalationBodySchema,
-  updateSettingsBodySchema,
   type AccountActivity,
   type AccountContacts,
   type AccountDetail,
@@ -23,11 +24,12 @@ import {
   type AccountsList,
   type AccountsListFilter,
   type AccountsSortDir,
+  type ArchiveAccountBody,
   type CreateContactBody,
   type PauseAccountBody,
+  type UpdateChasingSettingsBody,
   type UpdateContactBody,
   type UpdateEscalationBody,
-  type UpdateSettingsBody,
 } from "@/lib/schemas/accounts";
 import { apiErrorSchema } from "@/lib/schemas/dashboard";
 import {
@@ -38,13 +40,14 @@ import {
   getMockAccountPayments,
   getMockAccountsList,
   MockAccountsConflictError,
+  mockArchiveAccount,
   mockCreateContact,
   mockDeleteContact,
   mockPauseAccount,
   mockResumeAccount,
+  mockUpdateChasingSettings,
   mockUpdateContact,
   mockUpdateEscalation,
-  mockUpdateSettings,
 } from "@/lib/services/accounts.mocks";
 
 /**
@@ -480,27 +483,58 @@ export async function updateAccountEscalation(
   return accountContactsSchema.parse(responseBody);
 }
 
-/** `PATCH /api/v1/accounts/{id}/settings` */
-export async function updateAccountSettings(
+/** `PATCH /api/v1/accounts/{id}/chasing-settings` */
+export async function updateChasingSettings(
   accountId: string,
-  body: UpdateSettingsBody,
+  body: UpdateChasingSettingsBody,
   ifMatch: string,
 ): Promise<AccountDetail> {
   const id = accountIdSchema.parse(accountId);
-  const payload = updateSettingsBodySchema.parse(body);
+  const payload = updateChasingSettingsBodySchema.parse(body);
   const match = ifMatchSchema.parse(ifMatch);
 
   if (getPublicEnv().useMocks) {
     await delay(MOCK_DELAY_MS);
     try {
-      return accountDetailSchema.parse(mockUpdateSettings(id, payload, match));
+      return accountDetailSchema.parse(mockUpdateChasingSettings(id, payload, match));
     } catch (error) {
       toAccountsApiError(error);
     }
   }
 
-  const responseBody = await requestJson(`/accounts/${id}/settings`, {
+  const responseBody = await requestJson(`/accounts/${id}/chasing-settings`, {
     method: "PATCH",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "If-Match": match,
+    },
+    body: JSON.stringify(payload),
+  });
+  return accountDetailSchema.parse(responseBody);
+}
+
+/** `POST /api/v1/accounts/{id}/archive` */
+export async function archiveAccount(
+  accountId: string,
+  body: ArchiveAccountBody,
+  ifMatch: string,
+): Promise<AccountDetail> {
+  const id = accountIdSchema.parse(accountId);
+  const payload = archiveAccountBodySchema.parse(body);
+  const match = ifMatchSchema.parse(ifMatch);
+
+  if (getPublicEnv().useMocks) {
+    await delay(MOCK_DELAY_MS);
+    try {
+      return accountDetailSchema.parse(mockArchiveAccount(id, payload, match));
+    } catch (error) {
+      toAccountsApiError(error);
+    }
+  }
+
+  const responseBody = await requestJson(`/accounts/${id}/archive`, {
+    method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",

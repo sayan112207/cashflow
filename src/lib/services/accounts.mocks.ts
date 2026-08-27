@@ -1,5 +1,6 @@
 import type {
   AccountActivity,
+  AccountChasingSettings,
   AccountContacts,
   AccountDetail,
   AccountInvoices,
@@ -7,11 +8,13 @@ import type {
   AccountPayments,
   AccountsList,
   ApiError,
+  ArchiveAccountBody,
+  CadenceStep,
   CreateContactBody,
   PauseAccountBody,
+  UpdateChasingSettingsBody,
   UpdateContactBody,
   UpdateEscalationBody,
-  UpdateSettingsBody,
 } from "@/lib/schemas/accounts";
 
 /**
@@ -40,6 +43,116 @@ export const ACCOUNT_IDS = {
 const USER_IDS = {
   priya: "a5e70001-0000-4000-8000-000000000001",
 } as const;
+
+const DEFAULT_SEND_WINDOW = {
+  opens_at: "10:00",
+  closes_at: "18:00",
+  days: ["Mon", "Tue", "Wed", "Thu", "Fri"] as const,
+};
+
+const ORG_DEFAULT_STEPS: CadenceStep[] = [
+  {
+    key: "s1",
+    label: "−3 days",
+    tone: "Gentle",
+    channel: "email",
+    recipients: "p0",
+    needs_approval: false,
+    allowed_channels: ["email", "whatsapp"],
+  },
+  {
+    key: "s2",
+    label: "Due date",
+    tone: "Standard",
+    channel: "both",
+    recipients: "p0",
+    needs_approval: false,
+    allowed_channels: ["email", "whatsapp"],
+  },
+  {
+    key: "s3",
+    label: "+7",
+    tone: "Standard",
+    channel: "both",
+    recipients: "p0p1",
+    needs_approval: false,
+    allowed_channels: ["email", "whatsapp"],
+  },
+  {
+    key: "s4",
+    label: "+14",
+    tone: "Standard",
+    channel: "email",
+    recipients: "p0p1",
+    needs_approval: false,
+    allowed_channels: ["email", "whatsapp"],
+  },
+  {
+    key: "s5",
+    label: "+30",
+    tone: "Firm",
+    channel: "email",
+    recipients: "p0p1p2",
+    needs_approval: false,
+    allowed_channels: ["email", "whatsapp", "voice"],
+  },
+  {
+    key: "s6",
+    label: "+45",
+    tone: "Firm",
+    channel: "email",
+    recipients: "p0p1p2",
+    needs_approval: true,
+    allowed_channels: ["email", "whatsapp", "voice"],
+  },
+];
+
+function cloneSteps(steps: readonly CadenceStep[]): CadenceStep[] {
+  return steps.map((step) => ({ ...step, allowed_channels: [...step.allowed_channels] }));
+}
+
+function makeChasingSettings({
+  paused_at = null,
+  pause_reason = null,
+  paused_until = null,
+  ...rest
+}: Partial<AccountChasingSettings> = {}): AccountChasingSettings {
+  const defaultSteps = cloneSteps(ORG_DEFAULT_STEPS);
+  return {
+    chase_mode: "default",
+    steps: cloneSteps(ORG_DEFAULT_STEPS),
+    default_steps: defaultSteps,
+    default_summary: "6 steps, −3 days to +45, email and WhatsApp",
+    stop_reason: null,
+    stop_note: null,
+    send_window_mode: "default",
+    send_window: {
+      opens_at: DEFAULT_SEND_WINDOW.opens_at,
+      closes_at: DEFAULT_SEND_WINDOW.closes_at,
+      days: [...DEFAULT_SEND_WINDOW.days],
+    },
+    default_send_window: {
+      opens_at: DEFAULT_SEND_WINDOW.opens_at,
+      closes_at: DEFAULT_SEND_WINDOW.closes_at,
+      days: [...DEFAULT_SEND_WINDOW.days],
+    },
+    terms_preset: "net_30",
+    term_days: 30,
+    is_msme: false,
+    tds_section: "None",
+    tds_rate: null,
+    owner_user_id: USER_IDS.priya,
+    owner_name: "Priya Nair",
+    assignable_owners: [{ id: USER_IDS.priya, name: "Priya Nair" }],
+    notes: null,
+    can_edit: true,
+    archived_at: null,
+    paused_at,
+    pause_reason,
+    paused_until,
+    ...rest,
+  };
+}
 
 const CONTACT_IDS = {
   rajat: "c0c00001-0000-4000-8000-000000000001",
@@ -277,18 +390,12 @@ export const sharmaDetailFixture: AccountDetail = {
     { bucket: "61–90", amount: "52000.00", share_pct: 10.8 },
     { bucket: "90+", amount: "48000.00", share_pct: 9.9 },
   ],
-  settings: {
-    default_credit_days: 30,
-    currency: "INR",
+  settings: makeChasingSettings({
     tds_section: "194J",
     tds_rate: 10,
     paused_at: BOUNCED_NINE_DAYS_AGO,
     pause_reason: "Other",
-    paused_until: null,
-    owner_user_id: USER_IDS.priya,
-    owner_name: "Priya Nair",
-    notes: null,
-  },
+  }),
   recommendation: null,
 };
 
@@ -706,18 +813,10 @@ export const kaveriDetailFixture: AccountDetail = {
     { bucket: "61–90", amount: "180000.00", share_pct: 61.0 },
     { bucket: "90+", amount: "0.00", share_pct: 0.0 },
   ],
-  settings: {
-    default_credit_days: 30,
-    currency: "INR",
+  settings: makeChasingSettings({
     tds_section: "None",
-    tds_rate: 0,
-    paused_at: null,
-    pause_reason: null,
-    paused_until: null,
-    owner_user_id: USER_IDS.priya,
-    owner_name: "Priya Nair",
-    notes: null,
-  },
+    tds_rate: null,
+  }),
   recommendation: null,
 };
 
@@ -911,18 +1010,10 @@ function synthesizeDetailFromListItem(item: AccountListItem): AccountDetail {
       { bucket: "61–90", amount: "0.00", share_pct: 0 },
       { bucket: "90+", amount: "0.00", share_pct: 0 },
     ],
-    settings: {
-      default_credit_days: 30,
-      currency: "INR",
-      tds_section: "None",
-      tds_rate: 0,
+    settings: makeChasingSettings({
       paused_at: item.chase_status === "paused" ? SYNCED_TWO_DAYS_AGO : null,
       pause_reason: item.chase_status === "paused" ? "Other" : null,
-      paused_until: null,
-      owner_user_id: USER_IDS.priya,
-      owner_name: "Priya Nair",
-      notes: null,
-    },
+    }),
     recommendation: null,
   };
 }
@@ -1175,9 +1266,9 @@ export function mockUpdateEscalation(
   return structuredClone(contacts);
 }
 
-export function mockUpdateSettings(
+export function mockUpdateChasingSettings(
   accountId: string,
-  body: UpdateSettingsBody,
+  body: UpdateChasingSettingsBody,
   ifMatch: string,
 ): AccountDetail {
   const detail = mockStore.details[accountId];
@@ -1190,28 +1281,81 @@ export function mockUpdateSettings(
       "Someone else changed this account. Reload and try again.",
     );
   }
-  if (body.default_credit_days !== undefined) {
-    detail.settings.default_credit_days = body.default_credit_days;
+
+  const settings = detail.settings;
+  settings.chase_mode = body.chase_mode;
+  if (body.steps !== undefined) {
+    settings.steps = settings.steps.map((step) => {
+      const patch = body.steps!.find((entry) => entry.key === step.key);
+      return patch ? { ...step, ...patch } : step;
+    });
   }
-  if (body.currency !== undefined) {
-    detail.settings.currency = body.currency;
+  if (body.stop_reason !== undefined) {
+    settings.stop_reason = body.stop_reason;
   }
-  if (body.tds_section !== undefined) {
-    detail.settings.tds_section = body.tds_section;
+  if (body.stop_note !== undefined) {
+    settings.stop_note = body.stop_note;
   }
-  if (body.tds_rate !== undefined) {
-    detail.settings.tds_rate = body.tds_rate;
+  settings.send_window_mode = body.send_window_mode;
+  if (body.send_window !== undefined) {
+    settings.send_window = {
+      opens_at: body.send_window.opens_at,
+      closes_at: body.send_window.closes_at,
+      days: [...body.send_window.days],
+    };
   }
-  if (body.notes !== undefined) {
-    detail.settings.notes = body.notes;
+  settings.terms_preset = body.terms_preset;
+  settings.term_days = body.term_days;
+  settings.is_msme = body.is_msme;
+  settings.tds_section = body.tds_section;
+  settings.tds_rate = body.tds_rate;
+  settings.owner_user_id = body.owner_user_id;
+  settings.owner_name =
+    body.owner_user_id === USER_IDS.priya
+      ? "Priya Nair"
+      : body.owner_user_id === null
+        ? null
+        : settings.owner_name;
+  settings.notes = body.notes;
+
+  if (body.chase_mode === "stopped" && body.stop_reason) {
+    settings.paused_at = settings.paused_at ?? bumpUpdatedAt();
+    settings.pause_reason =
+      body.stop_reason === "Relationship hold" ? "Other" : body.stop_reason;
+    detail.chase_status = "paused";
+    detail.status_label = "Paused";
+    detail.header_status = `Chasing paused — ${body.stop_reason}`;
   }
-  if (body.owner_user_id !== undefined) {
-    detail.settings.owner_user_id = body.owner_user_id;
-    detail.settings.owner_name =
-      body.owner_user_id === USER_IDS.priya ? "Priya Nair" : detail.settings.owner_name;
-  }
+
   detail.updated_at = bumpUpdatedAt();
   return structuredClone(detail);
+}
+
+export function mockArchiveAccount(
+  accountId: string,
+  body: ArchiveAccountBody,
+  ifMatch: string,
+): AccountDetail {
+  const detail = mockStore.details[accountId];
+  if (!detail) {
+    throw new MockAccountsConflictError("not_found", "Account not found.");
+  }
+  if (detail.updated_at !== ifMatch) {
+    throw new MockAccountsConflictError(
+      "stale_write",
+      "Someone else changed this account. Reload and try again.",
+    );
+  }
+  if (body.confirm_name.trim().toUpperCase() !== detail.name.trim().toUpperCase()) {
+    throw new MockAccountsConflictError("archive_name_mismatch", "That name doesn't match.");
+  }
+
+  const snapshot = structuredClone(detail);
+  mockStore.list.items = mockStore.list.items.filter((item) => item.account_id !== accountId);
+  mockStore.list.total_count = Math.max(0, mockStore.list.total_count - 1);
+  mockStore.list.filtered_count = mockStore.list.items.length;
+  delete mockStore.details[accountId];
+  return snapshot;
 }
 
 export function mockPauseAccount(

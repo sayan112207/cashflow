@@ -404,19 +404,69 @@ export const updateEscalationBodySchema = z.object({
   p2_after_days: z.number().int().positive(),
 });
 
-export const updateSettingsBodySchema = z.object({
-  default_credit_days: z.number().int().positive().optional(),
-  currency: z.literal("INR").optional(),
-  tds_section: tdsSectionSchema.optional(),
-  tds_rate: z.number().min(0).max(100).optional(),
-  owner_user_id: z.string().uuid().nullable().optional(),
-  notes: z.string().nullable().optional(),
+export const updateChasingSettingsBodySchema = z
+  .object({
+    chase_mode: chaseModeSchema,
+    steps: z
+      .array(
+        cadenceStepSchema.pick({
+          key: true,
+          tone: true,
+          channel: true,
+          recipients: true,
+        }),
+      )
+      .optional(),
+    stop_reason: chaseStopReasonSchema.nullable().optional(),
+    stop_note: z.string().nullable().optional(),
+    send_window_mode: z.enum(["default", "custom"]),
+    send_window: sendWindowSchema.optional(),
+    terms_preset: paymentTermsPresetSchema,
+    term_days: z.number().int().positive(),
+    is_msme: z.boolean(),
+    tds_section: tdsSectionSchema,
+    tds_rate: z.number().min(0).max(30).nullable(),
+    owner_user_id: z.string().nullable(),
+    notes: z.string().nullable(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.tds_section !== "None" && value.tds_rate === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tds_rate"],
+        message: "Add the rate you expect for this section.",
+      });
+    }
+    if (value.chase_mode === "stopped" && !value.stop_reason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["stop_reason"],
+        message: "Pick a reason before saving.",
+      });
+    }
+    if (value.send_window_mode === "custom" && value.send_window) {
+      if (value.send_window.days.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["send_window", "days"],
+          message: "Pick at least one day.",
+        });
+      }
+      if (value.send_window.closes_at <= value.send_window.opens_at) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["send_window", "closes_at"],
+          message: "The window must close after it opens.",
+        });
+      }
+    }
+  });
+
+/** `POST /api/v1/accounts/{id}/archive` — server re-checks the typed name. */
+export const archiveAccountBodySchema = z.object({
+  confirm_name: z.string(),
 });
 
-/**
- * Settings tab form values. Pause fields are edited here but go through the
- * pause/resume endpoints — they are not part of `updateSettingsBodySchema`.
- */
 export const accountSettingsFormSchema = z
   .object({
     default_credit_days: z.number().int().positive(),
@@ -499,7 +549,8 @@ export type AccountActivity = z.infer<typeof accountActivitySchema>;
 export type CreateContactBody = z.infer<typeof createContactBodySchema>;
 export type UpdateContactBody = z.infer<typeof updateContactBodySchema>;
 export type UpdateEscalationBody = z.infer<typeof updateEscalationBodySchema>;
-export type UpdateSettingsBody = z.infer<typeof updateSettingsBodySchema>;
+export type UpdateChasingSettingsBody = z.infer<typeof updateChasingSettingsBodySchema>;
+export type ArchiveAccountBody = z.infer<typeof archiveAccountBodySchema>;
 export type AccountSettingsFormValues = z.infer<typeof accountSettingsFormSchema>;
 export type PauseAccountBody = z.infer<typeof pauseAccountBodySchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;
