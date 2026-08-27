@@ -8,10 +8,17 @@ import {
 } from "@/components/ui/table";
 import { AppButton } from "@/components/app/AppButton";
 import { AppSkeleton } from "@/components/app/AppSkeleton";
-import { formatDays, formatINR, formatShortDate } from "@/lib/format";
+import {
+  formatDays,
+  formatINR,
+  formatShortDate,
+  invoiceStatusLabel,
+  type InvoiceStatusDisplay,
+} from "@/lib/format";
 import type { AccountInvoice, AccountInvoiceGroup, AccountInvoices } from "@/lib/schemas/accounts";
 import type { AgingBucket } from "@/lib/schemas/dashboard";
 import { AccountsApiError } from "@/lib/services/accounts";
+import { cn } from "@/lib/utils";
 
 type AccountInvoicesPanelProps = {
   accountName: string;
@@ -137,6 +144,30 @@ function groupHeaderLabel(bucket: AgingBucket): string {
   return `${bucket} days overdue`;
 }
 
+const INVOICE_STATUS_CLASSES: Record<InvoiceStatusDisplay, string> = {
+  "Not yet due": "bg-alt text-fg-soft",
+  Open: "bg-alt text-fg-soft",
+  Overdue: "bg-danger-tint text-danger",
+  "Partially paid": "bg-warn-tint text-warn",
+  Promised: "bg-warn-tint text-warn",
+  Disputed: "bg-danger-tint text-danger",
+  Paid: "bg-alt text-fg-muted",
+  "Written off": "bg-alt text-fg-muted",
+};
+
+function InvoiceStatusBadge({ label }: { label: InvoiceStatusDisplay }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-pill px-2.5 py-0.5 text-pill font-semibold",
+        INVOICE_STATUS_CLASSES[label],
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 function InvoiceRow({ invoice }: { invoice: AccountInvoice }) {
   const chaseDisabled = invoice.chase_disabled_reason !== null;
 
@@ -158,7 +189,9 @@ function InvoiceRow({ invoice }: { invoice: AccountInvoice }) {
         {formatINR(invoice.amount_outstanding)}
       </TableCell>
       <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
-        {invoice.status}
+        <InvoiceStatusBadge
+          label={invoiceStatusLabel(invoice.status, invoice.days_overdue)}
+        />
       </TableCell>
       <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3">
         <div className="flex items-center justify-end gap-1">
