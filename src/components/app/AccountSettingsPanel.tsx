@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { AppButton } from "@/components/app/AppButton";
 import { CadenceStepEditor } from "@/components/app/CadenceStepEditor";
@@ -24,6 +24,7 @@ import type {
   CadenceStep,
   ChaseMode,
   ChaseStopReason,
+  PaymentTermsPreset,
   TdsSection,
   Weekday,
 } from "@/lib/schemas/accounts";
@@ -73,6 +74,8 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
   const [notes, setNotes] = useState(s.notes ?? "");
   const [reasonTouched, setReasonTouched] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [baselineRevision, setBaselineRevision] = useState(0);
+  const initialRef = useRef<SettingsSnapshot>(snapshotFromSettings(s));
 
   const save = useUpdateChasingSettings(accountId);
   const resume = useResumeAccount(accountId);
@@ -98,32 +101,97 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
 
   const reasonMissing = mode === "stopped" && reasonTouched && !stopReason;
 
+  const isDirty = useMemo(() => {
+    void baselineRevision;
+    return !snapshotsEqual(
+      {
+        mode,
+        steps,
+        stopReason,
+        stopNote,
+        windowMode,
+        opensAt,
+        closesAt,
+        days,
+        termsPreset,
+        termDays,
+        isMsme,
+        tdsSection,
+        tdsRate,
+        ownerId,
+        notes,
+      },
+      initialRef.current,
+    );
+  }, [
+    baselineRevision,
+    mode,
+    steps,
+    stopReason,
+    stopNote,
+    windowMode,
+    opensAt,
+    closesAt,
+    days,
+    termsPreset,
+    termDays,
+    isMsme,
+    tdsSection,
+    tdsRate,
+    ownerId,
+    notes,
+  ]);
+
   const submit = () => {
     if (mode === "stopped" && !stopReason) {
       setReasonTouched(true);
       return;
     }
-    save.mutate({
-      body: {
-        chase_mode: mode,
-        steps: mode === "custom" ? steps : undefined,
-        stop_reason: mode === "stopped" ? (stopReason as ChaseStopReason) : null,
-        stop_note: mode === "stopped" ? stopNote || null : null,
-        send_window_mode: windowMode,
-        send_window:
-          windowMode === "custom"
-            ? { opens_at: opensAt, closes_at: closesAt, days }
-            : undefined,
-        terms_preset: termsPreset,
-        term_days: termDays,
-        is_msme: isMsme,
-        tds_section: tdsSection,
-        tds_rate: tdsSection === "None" ? null : tdsRate,
-        owner_user_id: ownerId || null,
-        notes: notes || null,
+    save.mutate(
+      {
+        body: {
+          chase_mode: mode,
+          steps: mode === "custom" ? steps : undefined,
+          stop_reason: mode === "stopped" ? (stopReason as ChaseStopReason) : null,
+          stop_note: mode === "stopped" ? stopNote || null : null,
+          send_window_mode: windowMode,
+          send_window:
+            windowMode === "custom"
+              ? { opens_at: opensAt, closes_at: closesAt, days }
+              : undefined,
+          terms_preset: termsPreset,
+          term_days: termDays,
+          is_msme: isMsme,
+          tds_section: tdsSection,
+          tds_rate: tdsSection === "None" ? null : tdsRate,
+          owner_user_id: ownerId || null,
+          notes: notes || null,
+        },
+        ifMatch: detail.updated_at,
       },
-      ifMatch: detail.updated_at,
-    });
+      {
+        onSuccess: () => {
+          initialRef.current = {
+            mode,
+            steps: cloneSteps(steps),
+            stopReason,
+            stopNote,
+            windowMode,
+            opensAt,
+            closesAt,
+            days: [...days],
+            termsPreset,
+            termDays,
+            isMsme,
+            tdsSection,
+            tdsRate,
+            ownerId,
+            notes,
+          };
+          setBaselineRevision((revision) => revision + 1);
+        },
+      },
+    );
   };
 
   return (
@@ -618,7 +686,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
             <AppButton
               variant="primary"
               loading={save.isPending}
-              disabled={locked}
+              disabled={locked || !isDirty}
               onClick={submit}
             >
               Save changes
@@ -654,6 +722,97 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
         detail={detail}
       />
     </div>
+  );
+}
+
+type SettingsSnapshot = {
+  mode: ChaseMode;
+  steps: CadenceStep[];
+  stopReason: ChaseStopReason | "";
+  stopNote: string;
+  windowMode: "default" | "custom";
+  opensAt: string;
+  closesAt: string;
+  days: Weekday[];
+  termsPreset: PaymentTermsPreset;
+  termDays: number;
+  isMsme: boolean;
+  tdsSection: TdsSection;
+  tdsRate: number | null;
+  ownerId: string;
+  notes: string;
+};
+
+function cloneSteps(steps: CadenceStep[]): CadenceStep[] {
+  return steps.map((step) => ({
+    ...step,
+    allowed_channels: [...step.allowed_channels],
+  }));
+}
+
+function snapshotFromSettings(
+  settings: AccountDetail["settings"],
+): SettingsSnapshot {
+  return {
+    mode: settings.chase_mode,
+    steps: cloneSteps(settings.steps),
+    stopReason: settings.stop_reason ?? "",
+    stopNote: settings.stop_note ?? "",
+    windowMode: settings.send_window_mode,
+    opensAt: settings.send_window.opens_at,
+    closesAt: settings.send_window.closes_at,
+    days: [...settings.send_window.days],
+    termsPreset: settings.terms_preset,
+    termDays: settings.term_days,
+    isMsme: settings.is_msme,
+    tdsSection: settings.tds_section,
+    tdsRate: settings.tds_rate,
+    ownerId: settings.owner_user_id ?? "",
+    notes: settings.notes ?? "",
+  };
+}
+
+function stepsEqual(a: CadenceStep[], b: CadenceStep[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((step, index) => {
+    const other = b[index];
+    if (!other) return false;
+    return (
+      step.key === other.key &&
+      step.tone === other.tone &&
+      step.channel === other.channel &&
+      step.recipients === other.recipients
+    );
+  });
+}
+
+function daysEqual(a: Weekday[], b: Weekday[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((day, index) => day === sortedB[index]);
+}
+
+function snapshotsEqual(
+  current: SettingsSnapshot,
+  initial: SettingsSnapshot,
+): boolean {
+  return (
+    current.mode === initial.mode &&
+    current.stopReason === initial.stopReason &&
+    current.stopNote === initial.stopNote &&
+    current.windowMode === initial.windowMode &&
+    current.opensAt === initial.opensAt &&
+    current.closesAt === initial.closesAt &&
+    current.termsPreset === initial.termsPreset &&
+    current.termDays === initial.termDays &&
+    current.isMsme === initial.isMsme &&
+    current.tdsSection === initial.tdsSection &&
+    current.tdsRate === initial.tdsRate &&
+    current.ownerId === initial.ownerId &&
+    current.notes === initial.notes &&
+    stepsEqual(current.steps, initial.steps) &&
+    daysEqual(current.days, initial.days)
   );
 }
 
