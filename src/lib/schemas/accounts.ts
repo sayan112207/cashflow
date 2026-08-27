@@ -239,6 +239,7 @@ export const accountChasingSettingsSchema = z.object({
   owner_name: z.string().nullable(),
   assignable_owners: z.array(z.object({ id: z.string(), name: z.string() })),
   notes: z.string().nullable(),
+  escalation_contacts: z.array(escalationContactSchema),
   can_edit: z.boolean(),
   archived_at: z.string().nullable(),
   /** Header pause controls read these — stay on settings, not the detail root. */

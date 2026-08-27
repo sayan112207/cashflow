@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type {
   AccountActivity,
   AccountChasingSettings,
@@ -9,13 +11,18 @@ import type {
   AccountsList,
   ApiError,
   ArchiveAccountBody,
+  CadenceChannel,
+  CadenceRecipients,
   CadenceStep,
+  CadenceTone,
   CreateContactBody,
+  EscalationContact,
   PauseAccountBody,
   UpdateChasingSettingsBody,
   UpdateContactBody,
   UpdateEscalationBody,
 } from "@/lib/schemas/accounts";
+import { updateChasingSettingsBodySchema } from "@/lib/schemas/accounts";
 
 /**
  * Fixture data for `VITE_USE_MOCKS=true`, figures from `docs/accounts-spec.md`.
@@ -42,7 +49,15 @@ export const ACCOUNT_IDS = {
 
 const USER_IDS = {
   priya: "a5e70001-0000-4000-8000-000000000001",
+  amit: "a5e70001-0000-4000-8000-000000000002",
+  neha: "a5e70001-0000-4000-8000-000000000003",
 } as const;
+
+const ASSIGNABLE_OWNERS = [
+  { id: USER_IDS.priya, name: "Priya Nair" },
+  { id: USER_IDS.amit, name: "Amit Desai" },
+  { id: USER_IDS.neha, name: "Neha Kapoor" },
+] as const;
 
 const DEFAULT_SEND_WINDOW = {
   opens_at: "10:00",
@@ -50,61 +65,53 @@ const DEFAULT_SEND_WINDOW = {
   days: ["Mon", "Tue", "Wed", "Thu", "Fri"] as const,
 };
 
+const EARLY_ALLOWED_CHANNELS: CadenceChannel[] = ["email", "whatsapp", "both"];
+const LATE_ALLOWED_CHANNELS: CadenceChannel[] = ["email", "whatsapp", "both", "voice"];
+
+function cadenceStep(
+  key: string,
+  label: string,
+  tone: CadenceTone,
+  channel: CadenceChannel,
+  recipients: CadenceRecipients,
+  needsApproval: boolean,
+  late: boolean,
+): CadenceStep {
+  return {
+    key,
+    label,
+    tone,
+    channel,
+    recipients,
+    needs_approval: needsApproval,
+    allowed_channels: late ? [...LATE_ALLOWED_CHANNELS] : [...EARLY_ALLOWED_CHANNELS],
+  };
+}
+
+/** Org default cadence — Sharma's `default_steps` copy. */
 const ORG_DEFAULT_STEPS: CadenceStep[] = [
-  {
-    key: "s1",
-    label: "−3 days",
-    tone: "Gentle",
-    channel: "email",
-    recipients: "p0",
-    needs_approval: false,
-    allowed_channels: ["email", "whatsapp"],
-  },
-  {
-    key: "s2",
-    label: "Due date",
-    tone: "Standard",
-    channel: "both",
-    recipients: "p0",
-    needs_approval: false,
-    allowed_channels: ["email", "whatsapp"],
-  },
-  {
-    key: "s3",
-    label: "+7",
-    tone: "Standard",
-    channel: "both",
-    recipients: "p0p1",
-    needs_approval: false,
-    allowed_channels: ["email", "whatsapp"],
-  },
-  {
-    key: "s4",
-    label: "+14",
-    tone: "Standard",
-    channel: "email",
-    recipients: "p0p1",
-    needs_approval: false,
-    allowed_channels: ["email", "whatsapp"],
-  },
-  {
-    key: "s5",
-    label: "+30",
-    tone: "Firm",
-    channel: "email",
-    recipients: "p0p1p2",
-    needs_approval: false,
-    allowed_channels: ["email", "whatsapp", "voice"],
-  },
-  {
-    key: "s6",
-    label: "+45",
-    tone: "Firm",
-    channel: "email",
-    recipients: "p0p1p2",
-    needs_approval: true,
-    allowed_channels: ["email", "whatsapp", "voice"],
-  },
+  cadenceStep("s1", "−3 days", "Gentle", "email", "p0", false, false),
+  cadenceStep("s2", "Due date", "Standard", "both", "p0", false, false),
+  cadenceStep("s3", "+7", "Standard", "both", "p0p1", false, false),
+  cadenceStep("s4", "+14", "Standard", "email", "p0p1", false, false),
+  cadenceStep("s5", "+30", "Firm", "email", "p0p1p2", false, true),
+  cadenceStep("s6", "+45", "Firm", "email", "p0p1p2", true, true),
+];
+
+/** Sharma custom overrides — differs from org default on s3 (tone + channel) and s5 (channel). */
+const SHARMA_CUSTOM_STEPS: CadenceStep[] = [
+  cadenceStep("s1", "−3 days", "Gentle", "email", "p0", true, false),
+  cadenceStep("s2", "Due date", "Standard", "both", "p0", true, false),
+  cadenceStep("s3", "+7", "Firm", "whatsapp", "p0p1", true, false),
+  cadenceStep("s4", "+14", "Standard", "email", "p0p1", true, false),
+  cadenceStep("s5", "+30", "Firm", "both", "p0p1p2", true, true),
+  cadenceStep("s6", "+45", "Firm", "email", "p0p1p2", true, true),
+];
+
+const SHARMA_ESCALATION_CONTACTS: EscalationContact[] = [
+  { tier: "P0", name: "Rajat Mehta", detail: "Accounts executive · Email, WhatsApp" },
+  { tier: "P1", name: "Rajesh Sharma", detail: "Finance head · Email" },
+  { tier: "P2", name: null, detail: "Owner or director" },
 ];
 
 function cloneSteps(steps: readonly CadenceStep[]): CadenceStep[] {
@@ -143,8 +150,9 @@ function makeChasingSettings({
     tds_rate: null,
     owner_user_id: USER_IDS.priya,
     owner_name: "Priya Nair",
-    assignable_owners: [{ id: USER_IDS.priya, name: "Priya Nair" }],
+    assignable_owners: [...ASSIGNABLE_OWNERS],
     notes: null,
+    escalation_contacts: [],
     can_edit: true,
     archived_at: null,
     paused_at,
@@ -203,6 +211,51 @@ const AS_OF = "2026-08-17T09:12:00+05:30";
 const UPDATED_AT = "2026-08-17T09:12:00+05:30";
 const SYNCED_TWO_DAYS_AGO = "2026-08-15T09:12:00+05:30";
 const BOUNCED_NINE_DAYS_AGO = "2026-08-08T11:00:00+05:30";
+
+/** Sharma Traders — custom cadence with two steps diverging from org default. */
+export const sharmaChasingSettingsFixture: AccountChasingSettings = {
+  chase_mode: "custom",
+  steps: cloneSteps(SHARMA_CUSTOM_STEPS),
+  default_steps: cloneSteps(ORG_DEFAULT_STEPS),
+  default_summary: "6 steps, −3 days to +45, email and WhatsApp",
+  stop_reason: null,
+  stop_note: null,
+  send_window_mode: "default",
+  send_window: {
+    opens_at: DEFAULT_SEND_WINDOW.opens_at,
+    closes_at: DEFAULT_SEND_WINDOW.closes_at,
+    days: [...DEFAULT_SEND_WINDOW.days],
+  },
+  default_send_window: {
+    opens_at: DEFAULT_SEND_WINDOW.opens_at,
+    closes_at: DEFAULT_SEND_WINDOW.closes_at,
+    days: [...DEFAULT_SEND_WINDOW.days],
+  },
+  terms_preset: "net_30",
+  term_days: 30,
+  is_msme: false,
+  tds_section: "194J",
+  tds_rate: 10,
+  owner_user_id: USER_IDS.priya,
+  owner_name: "Priya Nair",
+  assignable_owners: [...ASSIGNABLE_OWNERS],
+  notes: null,
+  escalation_contacts: SHARMA_ESCALATION_CONTACTS,
+  can_edit: true,
+  archived_at: null,
+  paused_at: BOUNCED_NINE_DAYS_AGO,
+  pause_reason: "Other",
+  paused_until: null,
+};
+
+/** Kaveri & Sons — read-only settings for the no-admin lock state. */
+export const kaveriNoAdminChasingSettingsFixture: AccountChasingSettings = makeChasingSettings({
+  can_edit: false,
+  escalation_contacts: [
+    { tier: "P1", name: "Suresh Kaveri", detail: "Partner · Email" },
+    { tier: "P2", name: "Meera Kaveri", detail: "Operations · Email" },
+  ],
+});
 
 const CHASE_DISABLED_BOUNCE = "Can't chase — Rajat Mehta's email is bouncing";
 
@@ -390,12 +443,7 @@ export const sharmaDetailFixture: AccountDetail = {
     { bucket: "61–90", amount: "52000.00", share_pct: 10.8 },
     { bucket: "90+", amount: "48000.00", share_pct: 9.9 },
   ],
-  settings: makeChasingSettings({
-    tds_section: "194J",
-    tds_rate: 10,
-    paused_at: BOUNCED_NINE_DAYS_AGO,
-    pause_reason: "Other",
-  }),
+  settings: structuredClone(sharmaChasingSettingsFixture),
   recommendation: null,
 };
 
@@ -813,10 +861,7 @@ export const kaveriDetailFixture: AccountDetail = {
     { bucket: "61–90", amount: "180000.00", share_pct: 61.0 },
     { bucket: "90+", amount: "0.00", share_pct: 0.0 },
   ],
-  settings: makeChasingSettings({
-    tds_section: "None",
-    tds_rate: null,
-  }),
+  settings: structuredClone(kaveriNoAdminChasingSettingsFixture),
   recommendation: null,
 };
 
@@ -1282,49 +1327,58 @@ export function mockUpdateChasingSettings(
     );
   }
 
+  let payload: UpdateChasingSettingsBody;
+  try {
+    payload = updateChasingSettingsBodySchema.parse(body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const issue = error.issues[0];
+      const code = issue?.path[0] === "stop_reason" ? "stop_reason_required" : "validation_error";
+      throw new MockAccountsConflictError(code, issue?.message ?? "Invalid settings.");
+    }
+    throw error;
+  }
+
   const settings = detail.settings;
-  settings.chase_mode = body.chase_mode;
-  if (body.steps !== undefined) {
+  settings.chase_mode = payload.chase_mode;
+  if (payload.steps !== undefined) {
     settings.steps = settings.steps.map((step) => {
-      const patch = body.steps!.find((entry) => entry.key === step.key);
+      const patch = payload.steps!.find((entry) => entry.key === step.key);
       return patch ? { ...step, ...patch } : step;
     });
   }
-  if (body.stop_reason !== undefined) {
-    settings.stop_reason = body.stop_reason;
+  if (payload.stop_reason !== undefined) {
+    settings.stop_reason = payload.stop_reason;
   }
-  if (body.stop_note !== undefined) {
-    settings.stop_note = body.stop_note;
+  if (payload.stop_note !== undefined) {
+    settings.stop_note = payload.stop_note;
   }
-  settings.send_window_mode = body.send_window_mode;
-  if (body.send_window !== undefined) {
+  settings.send_window_mode = payload.send_window_mode;
+  if (payload.send_window !== undefined) {
     settings.send_window = {
-      opens_at: body.send_window.opens_at,
-      closes_at: body.send_window.closes_at,
-      days: [...body.send_window.days],
+      opens_at: payload.send_window.opens_at,
+      closes_at: payload.send_window.closes_at,
+      days: [...payload.send_window.days],
     };
   }
-  settings.terms_preset = body.terms_preset;
-  settings.term_days = body.term_days;
-  settings.is_msme = body.is_msme;
-  settings.tds_section = body.tds_section;
-  settings.tds_rate = body.tds_rate;
-  settings.owner_user_id = body.owner_user_id;
+  settings.terms_preset = payload.terms_preset;
+  settings.term_days = payload.term_days;
+  settings.is_msme = payload.is_msme;
+  settings.tds_section = payload.tds_section;
+  settings.tds_rate = payload.tds_rate;
+  settings.owner_user_id = payload.owner_user_id;
   settings.owner_name =
-    body.owner_user_id === USER_IDS.priya
-      ? "Priya Nair"
-      : body.owner_user_id === null
-        ? null
-        : settings.owner_name;
-  settings.notes = body.notes;
+    ASSIGNABLE_OWNERS.find((owner) => owner.id === payload.owner_user_id)?.name ??
+    (payload.owner_user_id === null ? null : settings.owner_name);
+  settings.notes = payload.notes;
 
-  if (body.chase_mode === "stopped" && body.stop_reason) {
+  if (payload.chase_mode === "stopped" && payload.stop_reason) {
     settings.paused_at = settings.paused_at ?? bumpUpdatedAt();
     settings.pause_reason =
-      body.stop_reason === "Relationship hold" ? "Other" : body.stop_reason;
+      payload.stop_reason === "Relationship hold" ? "Other" : payload.stop_reason;
     detail.chase_status = "paused";
     detail.status_label = "Paused";
-    detail.header_status = `Chasing paused — ${body.stop_reason}`;
+    detail.header_status = `Chasing paused — ${payload.stop_reason}`;
   }
 
   detail.updated_at = bumpUpdatedAt();
