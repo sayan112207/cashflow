@@ -28,10 +28,13 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   const { user, orgs } = Route.useRouteContext();
+  // The guard rejects an empty org list, so there is always a first org; the
+  // fallback exists only to satisfy the indexed-access type.
   const orgName = orgs[0]?.name ?? "";
 
   return (
     <AppShell user={user} orgName={orgName}>
+      {/* Required: pages under /app render here. Removing <Outlet /> blanks every child. */}
       <Outlet />
     </AppShell>
   );
