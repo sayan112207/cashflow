@@ -1,6 +1,7 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { z } from "zod";
+import { toast } from "sonner";
 
 import { AgingBar } from "@/components/app/AgingBar";
 import { AppButton } from "@/components/app/AppButton";
@@ -20,77 +21,24 @@ import {
   formatTimeOfDay,
   isZeroMoney,
 } from "@/lib/format";
-import type { ChaseQueue, ChaseQueueItem, DashboardSummary } from "@/lib/schemas/dashboard";
+import type { ChaseQueueItem, ChaseSkipped, DashboardSummary } from "@/lib/schemas/dashboard";
 import {
-  aggregatesUnavailableFixture,
-  allAgedSummaryFixture,
-  chaseQueueFixture,
-  emptyChaseQueueFixture,
-  largeTotalSummaryFixture,
-  longAccountNameChaseQueueFixture,
-  PRE_CHECKED_INVOICE_IDS,
-  summaryFixture,
-} from "@/lib/services/dashboard.mocks";
+  DashboardApiError,
+  dashboardQueryKeys,
+  getChaseQueue,
+  getSummary,
+  postChases,
+} from "@/lib/services/dashboard";
 
 /**
- * Temporary. Spec §6's five states are otherwise unreachable without a backend.
- * Deleted when this screen is wired to the service — nothing should come to
- * depend on the param.
- *
- *   /app/dashboard
- *   /app/dashboard?state=loading
- *   /app/dashboard?state=empty
- *   /app/dashboard?state=error
- *   /app/dashboard?state=overflow
- *   /app/dashboard?state=aged
+ * The QueryClient lives on the router and is provided from `__root`. These two
+ * queries share nothing except that they render on the same page — they start
+ * together and fail separately, so a dead summary cannot blank a live queue.
  */
-const dashboardSearchSchema = z.object({
-  state: z.enum(["loading", "empty", "error", "overflow", "aged"]).optional(),
-});
-
 export const Route = createFileRoute("/app/dashboard")({
-  validateSearch: dashboardSearchSchema,
   head: () => ({ meta: [{ title: `Dashboard — ${PRODUCT_NAME}` }] }),
   component: DashboardPage,
 });
-
-type PreviewState = z.infer<typeof dashboardSearchSchema>["state"];
-
-type DashboardView =
-  | { kind: "loading" }
-  | { kind: "error"; message: string; queue: ChaseQueue }
-  | { kind: "ready"; summary: DashboardSummary; queue: ChaseQueue };
-
-/**
- * FILLER DATA — every figure on this screen except the user's name comes from
- * fixtures, not from the API. `viewFor` is the seam: Step 7 replaces it with
- * the service calls, and the rest of this file already consumes the schemas'
- * output types.
- */
-function viewFor(state: PreviewState): DashboardView {
-  switch (state) {
-    case "loading":
-      return { kind: "loading" };
-    case "error":
-      return {
-        kind: "error",
-        message: aggregatesUnavailableFixture.error.message,
-        queue: chaseQueueFixture,
-      };
-    case "empty":
-      return { kind: "ready", summary: summaryFixture, queue: emptyChaseQueueFixture };
-    case "aged":
-      return { kind: "ready", summary: allAgedSummaryFixture, queue: emptyChaseQueueFixture };
-    case "overflow":
-      return {
-        kind: "ready",
-        summary: largeTotalSummaryFixture,
-        queue: longAccountNameChaseQueueFixture,
-      };
-    default:
-      return { kind: "ready", summary: summaryFixture, queue: chaseQueueFixture };
-  }
-}
 
 /**
  * Spec §6: an empty queue is "everything is 90+" when that bucket holds the
@@ -107,22 +55,34 @@ function isAllAged(summary: DashboardSummary): boolean {
   return summary.aging.every((segment) => segment.bucket === "90+" || isZeroMoney(segment.amount));
 }
 
+function userFacingMessage(error: unknown): string {
+  if (error instanceof DashboardApiError) return error.message;
+  if (error instanceof Error && error.message.length > 0) return error.message;
+  return "";
+}
+
 function DashboardPage() {
-  const { state } = Route.useSearch();
   const { user } = Route.useRouteContext();
-  const navigate = Route.useNavigate();
   const firstName = formatFirstName(user.displayName);
   const greeting = formatGreeting();
-  const view = viewFor(state);
 
-  function retry() {
-    void navigate({ to: "/app/dashboard", search: {} });
-  }
+  const summaryQuery = useQuery({
+    queryKey: dashboardQueryKeys.summary,
+    queryFn: () => getSummary(),
+    retry: false,
+  });
+  const queueQuery = useQuery({
+    queryKey: dashboardQueryKeys.chaseQueue,
+    queryFn: () => getChaseQueue(),
+    retry: false,
+  });
 
-  const asOf = view.kind === "ready" ? view.summary.as_of : null;
+  const summary = summaryQuery.data;
+  const asOf = summary?.as_of ?? null;
+  const busy = summaryQuery.isPending || queueQuery.isPending;
 
   return (
-    <div aria-busy={view.kind === "loading" || undefined}>
+    <div aria-busy={busy || undefined}>
       <header className="mb-6">
         <h1 className="text-title font-bold tracking-tight text-fg" suppressHydrationWarning>
           {firstName ? `${greeting}, ${firstName}` : greeting}
@@ -132,48 +92,44 @@ function DashboardPage() {
             {formatLongDate(asOf)} · Last synced at {formatTimeOfDay(asOf)}
           </p>
         ) : (
-          // Same line-height as the metadata so the tile row does not jump
-          // when loading resolves into a timestamp.
           <p className="mt-1 text-prose font-normal text-fg-soft">&nbsp;</p>
         )}
       </header>
 
-      {view.kind === "loading" ? (
-        <DashboardLoading />
-      ) : view.kind === "error" ? (
+      {summaryQuery.isPending ? (
+        <SummarySkeletons />
+      ) : summaryQuery.isError ? (
         <>
           <div className="mb-4 flex items-center gap-3">
             <p role="alert" className="text-body font-semibold text-fg">
-              {view.message}
+              Couldn't load your totals.
             </p>
-            <AppButton variant="secondary" onClick={retry}>
+            <AppButton variant="secondary" onClick={() => void summaryQuery.refetch()}>
               Retry
             </AppButton>
           </div>
           <TileRow summary={null} />
-          <ChaseNowSection queue={view.queue} />
         </>
-      ) : (
+      ) : summary ? (
         <>
-          <TileRow summary={view.summary} />
+          <TileRow summary={summary} />
           <section className="mt-8">
             <h2 className="mb-4 text-section font-bold tracking-tight text-fg">
               Where the money is sitting
             </h2>
-            <AgingBar segments={view.summary.aging} />
+            <AgingBar segments={summary.aging} />
           </section>
-          <AttentionRow summary={view.summary} />
-          <ChaseNowSection
-            queue={view.queue}
-            {...(view.queue.items.length === 0
-              ? {
-                  emptyAmount: view.summary.tiles.total_outstanding,
-                  emptyKind: isAllAged(view.summary) ? "aged" : "current",
-                }
-              : {})}
-          />
+          <AttentionRow summary={summary} />
         </>
-      )}
+      ) : null}
+
+      <ChaseNowSection
+        summary={summary}
+        items={queueQuery.data?.items}
+        isPending={queueQuery.isPending}
+        error={queueQuery.isError ? queueQuery.error : undefined}
+        onRetry={() => void queueQuery.refetch()}
+      />
     </div>
   );
 }
@@ -247,10 +203,10 @@ function AttentionRow({ summary }: { summary: DashboardSummary }) {
  * data arrives, which is the layout shift the same paragraph forbids. Three
  * card skeletons occupy the strip's final size; they are not extra chrome.
  */
-function DashboardLoading() {
+function SummarySkeletons() {
   return (
     <>
-      <span className="sr-only">Loading dashboard</span>
+      <span className="sr-only">Loading totals</span>
       <div className="grid grid-cols-4 gap-4">
         <TileSkeleton />
         <TileSkeleton />
@@ -271,22 +227,18 @@ function DashboardLoading() {
           <TileSkeleton eyebrow={false} />
         </div>
       </section>
-      <section className="mt-8">
-        <h2 className="text-section font-bold tracking-tight text-fg">Chase now</h2>
-        <p className="mt-1 mb-4 text-prose font-normal text-fg-soft">
-          Ranked by what's most worth chasing today
-        </p>
-        <DataTable columns={SKELETON_COLUMNS} rows={SKELETON_ROWS} rowKey={(row) => row.id} />
-      </section>
     </>
   );
+}
+
+function QueueSkeletons() {
+  return <DataTable columns={SKELETON_COLUMNS} rows={SKELETON_ROWS} rowKey={(row) => row.id} />;
 }
 
 function TileSkeleton({ eyebrow = true }: { eyebrow?: boolean }) {
   return (
     <div className="rounded-card border border-hairline bg-card px-5 py-4">
       {eyebrow ? <AppSkeleton className="h-3 w-24" /> : null}
-      {/* h-7 is 28px — the metric size — so the card is the loaded tile's height. */}
       <AppSkeleton className={eyebrow ? "mt-2 h-7 w-32" : "h-7 w-16"} />
       <AppSkeleton className="mt-1 h-3 w-28" />
     </div>
@@ -356,30 +308,49 @@ const SKELETON_COLUMNS: readonly Column<(typeof SKELETON_ROWS)[number]>[] = [
 ];
 
 function ChaseNowSection({
-  queue,
-  emptyAmount,
-  emptyKind,
+  summary,
+  items,
+  isPending,
+  error,
+  onRetry,
 }: {
-  queue: ChaseQueue;
-  emptyAmount?: string;
-  emptyKind?: "current" | "aged";
+  summary: DashboardSummary | undefined;
+  items: readonly ChaseQueueItem[] | undefined;
+  isPending: boolean;
+  error: unknown;
+  onRetry: () => void;
 }) {
+  const emptyKind =
+    items !== undefined && items.length === 0 && summary !== undefined
+      ? isAllAged(summary)
+        ? "aged"
+        : "current"
+      : undefined;
+
   return (
     <section className="mt-8">
       <h2 className="text-section font-bold tracking-tight text-fg">Chase now</h2>
       <p className="mt-1 mb-4 text-prose font-normal text-fg-soft">
         Ranked by what's most worth chasing today
       </p>
-      {emptyKind === "current" && emptyAmount !== undefined ? (
-        <EmptyCurrent total={emptyAmount} />
+      {isPending ? (
+        <QueueSkeletons />
+      ) : error !== undefined ? (
+        <div className="flex items-center gap-3">
+          <p role="alert" className="text-body font-semibold text-fg">
+            {userFacingMessage(error) || "Couldn't load the chase queue."}
+          </p>
+          <AppButton variant="secondary" onClick={onRetry}>
+            Retry
+          </AppButton>
+        </div>
+      ) : emptyKind === "current" && summary !== undefined ? (
+        <EmptyCurrent total={summary.tiles.total_outstanding} />
       ) : emptyKind === "aged" ? (
         <EmptyAged />
-      ) : (
-        <ChaseTable
-          key={queue.items.map((item) => item.invoice_id).join(",")}
-          items={queue.items}
-        />
-      )}
+      ) : items !== undefined && items.length > 0 ? (
+        <ChaseTable key={items.map((item) => item.invoice_id).join(",")} items={items} />
+      ) : null}
     </section>
   );
 }
@@ -441,14 +412,45 @@ function EmptyCheckIcon() {
   );
 }
 
+function skippedLabel(skipped: readonly ChaseSkipped[], items: readonly ChaseQueueItem[]): string {
+  return skipped
+    .map((entry) => {
+      const row = items.find((item) => item.invoice_id === entry.invoice_id);
+      const invoice = row?.invoice_number ?? entry.invoice_id;
+      return `${invoice} (${entry.reason})`;
+    })
+    .join(", ");
+}
+
 function ChaseTable({ items }: { items: readonly ChaseQueueItem[] }) {
-  const [selected, setSelected] = useState<ReadonlySet<string>>(() => {
-    const present = new Set(items.map((item) => item.invoice_id));
-    return new Set(PRE_CHECKED_INVOICE_IDS.filter((id) => present.has(id)));
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<ReadonlySet<string>>(
+    () => new Set(items.slice(0, 3).map((item) => item.invoice_id)),
+  );
+
+  const chaseMutation = useMutation({
+    mutationFn: (invoiceIds: readonly string[]) => postChases(invoiceIds),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.chaseQueue });
+      if (result.skipped.length === 0) {
+        const word = result.queued === 1 ? "invoice" : "invoices";
+        toast(`${result.queued} ${word} queued`);
+        return;
+      }
+      toast(`${result.queued} queued. Skipped ${skippedLabel(result.skipped, items)}.`);
+    },
+    onError: (error) => {
+      if (error instanceof DashboardApiError) toast(error.message);
+    },
   });
 
   const allSelected = items.length > 0 && selected.size === items.length;
   const headerChecked = allSelected ? true : selected.size === 0 ? false : "indeterminate";
+  const pendingIds = chaseMutation.isPending ? (chaseMutation.variables ?? []) : [];
+  const bulkPending =
+    pendingIds.length > 0 &&
+    pendingIds.length === selected.size &&
+    pendingIds.every((id) => selected.has(id));
 
   function toggleRow(invoiceId: string) {
     setSelected((previous) => {
@@ -466,9 +468,6 @@ function ChaseTable({ items }: { items: readonly ChaseQueueItem[] }) {
         : new Set(items.map((item) => item.invoice_id)),
     );
   }
-
-  /** Step 7 replaces this with `postChases`. Deliberately inert for now. */
-  function chase() {}
 
   const columns: readonly Column<ChaseQueueItem>[] = [
     {
@@ -515,8 +514,14 @@ function ChaseTable({ items }: { items: readonly ChaseQueueItem[] }) {
       header: "",
       headerHidden: true,
       align: "right",
-      cell: () => (
-        <AppButton variant="text" className="row-action ml-auto">
+      cell: (row) => (
+        <AppButton
+          variant="text"
+          className="row-action ml-auto"
+          loading={pendingIds.length === 1 && pendingIds[0] === row.invoice_id}
+          disabled={chaseMutation.isPending}
+          onClick={() => chaseMutation.mutate([row.invoice_id])}
+        >
           Chase
         </AppButton>
       ),
@@ -525,7 +530,11 @@ function ChaseTable({ items }: { items: readonly ChaseQueueItem[] }) {
 
   return (
     <>
-      <BulkBar count={selected.size} onChase={chase} />
+      <BulkBar
+        count={selected.size}
+        loading={bulkPending}
+        onChase={() => chaseMutation.mutate([...selected])}
+      />
       <DataTable
         columns={columns}
         rows={items}
