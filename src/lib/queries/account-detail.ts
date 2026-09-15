@@ -1,44 +1,88 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import type { AccountDetail, PauseAccountBody, UpdateSettingsBody } from "@/lib/schemas/accounts";
+import type {
+  AccountDetail,
+  ArchiveAccountBody,
+  PauseAccountBody,
+  UpdateChasingSettingsBody,
+} from "@/lib/schemas/accounts";
 import {
   AccountsApiError,
   accountsQueryKeys,
+  archiveAccount,
   pauseAccount,
   resumeAccount,
-  updateAccountSettings,
+  updateChasingSettings,
 } from "@/lib/services/accounts";
 
-/** Same optimistic pattern as contact update — detail resource, full replace on success. */
-export function useUpdateAccountSettings(accountId: string) {
+function applyChasingSettingsPatch(
+  settings: AccountDetail["settings"],
+  body: UpdateChasingSettingsBody,
+): AccountDetail["settings"] {
+  const next: AccountDetail["settings"] = {
+    ...settings,
+    chase_mode: body.chase_mode,
+    stop_reason: body.stop_reason === undefined ? settings.stop_reason : body.stop_reason,
+    stop_note: body.stop_note === undefined ? settings.stop_note : body.stop_note,
+    send_window_mode: body.send_window_mode,
+    send_window:
+      body.send_window === undefined
+        ? settings.send_window
+        : {
+            opens_at: body.send_window.opens_at,
+            closes_at: body.send_window.closes_at,
+            days: [...body.send_window.days],
+          },
+    terms_preset: body.terms_preset,
+    term_days: body.term_days,
+    is_msme: body.is_msme,
+    tds_section: body.tds_section,
+    tds_rate: body.tds_rate,
+    owner_user_id: body.owner_user_id,
+    notes: body.notes,
+    steps:
+      body.steps === undefined
+        ? settings.steps
+        : settings.steps.map((step) => {
+            const patch = body.steps!.find((entry) => entry.key === step.key);
+            return patch ? { ...step, ...patch } : step;
+          }),
+  };
+
+  if (body.chase_mode === "stopped" && body.stop_reason) {
+    next.paused_at = settings.paused_at ?? new Date().toISOString();
+    next.pause_reason = body.stop_reason === "Relationship hold" ? "Other" : body.stop_reason;
+  }
+
+  return next;
+}
+
+export function useUpdateChasingSettings(accountId: string) {
   const queryClient = useQueryClient();
   const queryKey = accountsQueryKeys.detail(accountId);
 
   return useMutation({
-    mutationFn: (vars: { body: UpdateSettingsBody; ifMatch: string }) =>
-      updateAccountSettings(accountId, vars.body, vars.ifMatch),
+    mutationFn: (vars: { body: UpdateChasingSettingsBody; ifMatch: string }) =>
+      updateChasingSettings(accountId, vars.body, vars.ifMatch),
 
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<AccountDetail>(queryKey);
       if (!previous) return { previous: undefined };
 
+      const settings = applyChasingSettingsPatch(previous.settings, vars.body);
+
       queryClient.setQueryData<AccountDetail>(queryKey, {
         ...previous,
-        settings: {
-          ...previous.settings,
-          default_credit_days:
-            vars.body.default_credit_days ?? previous.settings.default_credit_days,
-          currency: vars.body.currency ?? previous.settings.currency,
-          tds_section: vars.body.tds_section ?? previous.settings.tds_section,
-          tds_rate: vars.body.tds_rate ?? previous.settings.tds_rate,
-          owner_user_id:
-            vars.body.owner_user_id === undefined
-              ? previous.settings.owner_user_id
-              : vars.body.owner_user_id,
-          notes: vars.body.notes === undefined ? previous.settings.notes : vars.body.notes,
-        },
+        settings,
+        ...(vars.body.chase_mode === "stopped" && vars.body.stop_reason
+          ? {
+              chase_status: "paused" as const,
+              status_label: "Paused" as const,
+              header_status: `Chasing paused — ${vars.body.stop_reason}`,
+            }
+          : {}),
       });
 
       return { previous };
@@ -57,6 +101,49 @@ export function useUpdateAccountSettings(accountId: string) {
 
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey, data);
+      void queryClient.invalidateQueries({ queryKey: accountsQueryKeys.activity(accountId) });
+    },
+  });
+}
+
+export function useArchiveAccount(accountId: string) {
+  const queryClient = useQueryClient();
+  const queryKey = accountsQueryKeys.detail(accountId);
+
+  return useMutation({
+    mutationFn: (vars: { body: ArchiveAccountBody; ifMatch: string }) =>
+      archiveAccount(accountId, vars.body, vars.ifMatch),
+
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<AccountDetail>(queryKey);
+      if (!previous) return { previous: undefined };
+
+      queryClient.setQueryData<AccountDetail>(queryKey, {
+        ...previous,
+        settings: {
+          ...previous.settings,
+          archived_at: new Date().toISOString(),
+        },
+      });
+
+      return { previous };
+    },
+
+    onError: (error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      if (error instanceof AccountsApiError) {
+        toast.error(error.message);
+        return;
+      }
+      toast.error("Couldn't archive this account.");
+    },
+
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey: accountsQueryKeys.list() });
     },
   });
 }

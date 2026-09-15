@@ -8,7 +8,7 @@ import {
   getMockAccountDetail,
   LONG_ACCOUNT_NAME,
   mockUpdateContact,
-  mockUpdateSettings,
+  mockUpdateChasingSettings,
   sharmaDetailFixture,
 } from "@/lib/services/accounts.mocks";
 
@@ -109,13 +109,56 @@ describe("account settings owner", () => {
     const before = getMockAccountDetail(ACCOUNT_IDS.sharma);
     if (!before) throw new Error("missing Sharma detail fixture");
 
-    const after = mockUpdateSettings(
+    // The settings body is now the whole chasing-settings resource, so the call
+    // echoes the current values back and changes only the owner.
+    const s = before.settings;
+    const after = mockUpdateChasingSettings(
       ACCOUNT_IDS.sharma,
-      { owner_user_id: null },
+      {
+        chase_mode: s.chase_mode,
+        stop_reason: s.stop_reason,
+        stop_note: s.stop_note,
+        send_window_mode: s.send_window_mode,
+        terms_preset: s.terms_preset,
+        term_days: s.term_days,
+        is_msme: s.is_msme,
+        tds_section: s.tds_section,
+        tds_rate: s.tds_rate,
+        owner_user_id: null,
+        notes: s.notes,
+      },
       before.updated_at,
     );
 
     expect(after.settings.owner_user_id).toBeNull();
+    expect(after.settings.owner_name).toBeNull();
+  });
+
+  test("an unknown owner id carries no name", () => {
+    const before = getMockAccountDetail(ACCOUNT_IDS.sharma);
+    if (!before) throw new Error("missing Sharma detail fixture");
+
+    const s = before.settings;
+    const after = mockUpdateChasingSettings(
+      ACCOUNT_IDS.sharma,
+      {
+        chase_mode: s.chase_mode,
+        stop_reason: s.stop_reason,
+        stop_note: s.stop_note,
+        send_window_mode: s.send_window_mode,
+        terms_preset: s.terms_preset,
+        term_days: s.term_days,
+        is_msme: s.is_msme,
+        tds_section: s.tds_section,
+        tds_rate: s.tds_rate,
+        owner_user_id: "ffffffff-0000-4000-8000-00000000ffff",
+        notes: s.notes,
+      },
+      before.updated_at,
+    );
+
+    // The id is stored, so the name must not be the previous owner's.
+    expect(after.settings.owner_user_id).toBe("ffffffff-0000-4000-8000-00000000ffff");
     expect(after.settings.owner_name).toBeNull();
   });
 });

@@ -3,6 +3,25 @@
  * their output back into a number.
  */
 
+import type { InvoiceStatus } from "@/lib/schemas/accounts";
+
+/** Render-time label — `Overdue` is derived, not part of `invoiceStatusSchema`. */
+export type InvoiceStatusDisplay = InvoiceStatus | "Overdue";
+
+/**
+ * Maps wire status to display copy. `Open` with positive `daysOverdue` reads as
+ * `Overdue` — overdue-ness is not duplicated in the enum.
+ */
+export function invoiceStatusLabel(
+  status: InvoiceStatus,
+  daysOverdue: number,
+): InvoiceStatusDisplay {
+  if (status === "Open" && daysOverdue > 0) {
+    return "Overdue";
+  }
+  return status;
+}
+
 // Built once at module scope: constructing an Intl formatter is expensive
 // relative to calling it, and an invoice table formats one per row.
 const inrFormatter = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });

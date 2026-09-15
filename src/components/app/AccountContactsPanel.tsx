@@ -525,7 +525,7 @@ function ChannelSwitch({
       disabled={busy}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "rounded-pill px-3 py-1.5 text-prose font-semibold transition-colors duration-150 disabled:opacity-60",
+        "rounded-pill px-2.5 py-1 text-pill font-semibold transition-colors duration-150 disabled:opacity-60",
         checked ? "bg-accent-tint text-accent" : "bg-alt text-fg-soft",
       )}
     >
