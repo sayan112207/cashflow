@@ -35,6 +35,13 @@ const API_BASE_PATH = "/api/v1";
 /** Long enough that a skeleton is visible and a layout shift would be obvious. */
 const MOCK_DELAY_MS = 400;
 
+/**
+ * Hung-request cap. Not a contract value — the API does not name one — so a
+ * caller that passes its own `signal` keeps control. Without this, a stalled
+ * `/api/v1` leaves the loading skeletons up forever.
+ */
+const FETCH_TIMEOUT_MS = 15_000;
+
 /** Contract: `limit` defaults to 6, max 50. */
 const DEFAULT_CHASE_QUEUE_LIMIT = 6;
 const chaseQueueLimitSchema = z
@@ -75,7 +82,10 @@ function delay(ms: number): Promise<void> {
  * typecheck, which is the failure this module is built to prevent.
  */
 async function requestJson(path: string, init: RequestInit): Promise<unknown> {
-  const response = await fetch(`${API_BASE_PATH}${path}`, init);
+  const response = await fetch(`${API_BASE_PATH}${path}`, {
+    ...init,
+    signal: init.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
 
   // A body is expected on both success and failure; the contract defines an
   // envelope for errors too. Anything unparseable is handled below.

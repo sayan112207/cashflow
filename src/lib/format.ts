@@ -127,3 +127,14 @@ export function formatGreeting(now: Date = new Date()): string {
 export function formatFirstName(displayName: string): string {
   return displayName.trim().split(/\s+/)[0] ?? "";
 }
+
+/**
+ * Days-overdue for a chase row. Spec §7: never `0 days` — a non-overdue
+ * invoice reads `Not yet due`. `formatDays` stays the general counter (averages
+ * can be zero); this is the one the table uses.
+ */
+export function formatOverdueDays(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  if (n <= 0) return "Not yet due";
+  return formatDays(n);
+}

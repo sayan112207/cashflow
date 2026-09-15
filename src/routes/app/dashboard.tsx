@@ -104,9 +104,7 @@ function viewFor(state: PreviewState): DashboardView {
 function isAllAged(summary: DashboardSummary): boolean {
   const oldest = summary.aging.find((segment) => segment.bucket === "90+");
   if (oldest === undefined || isZeroMoney(oldest.amount)) return false;
-  return summary.aging.every(
-    (segment) => segment.bucket === "90+" || isZeroMoney(segment.amount),
-  );
+  return summary.aging.every((segment) => segment.bucket === "90+" || isZeroMoney(segment.amount));
 }
 
 function DashboardPage() {

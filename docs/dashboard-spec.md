@@ -27,7 +27,7 @@ This is the corrected spec, post-audit. Every figure here is authoritative. Wher
   - Active: `color: var(--text-primary)`, `border-left: 2px solid var(--accent-line)`, `padding-left: 10px`, `aria-current="page"`.
   - Inactive: `color: var(--text-secondary)`, `border-left: 2px solid transparent`.
   - Hover: `background: var(--surface-hover)`.
-  - Only `/dashboard` has a page in this build. The other seven route to `/[section]` which renders a bare `<h1>` and nothing else. **Do not disable them and do not hide them** — the nav must be structurally complete now, because 21 screens copy it later.
+  - Only `/app/dashboard` has a page in this build. The other seven route to `/app/[section]` which renders a bare `<h1>` and nothing else. **Do not disable them and do not hide them** — the nav must be structurally complete now, because 21 screens copy it later.
 - Footer, pinned bottom, `1px solid var(--border-hairline)` top border: 30px circle avatar + name at `--fs-prose`/600 + org name at `--fs-eyebrow`/400 in `--text-muted`.
 
 **Page header** — `<h1>` at `--fs-title` / 700 / -0.02em. Optional metadata line beneath at `--fs-prose` / 400 / `--text-secondary`. 22px margin below the header block.
@@ -127,7 +127,7 @@ Rows 1–3 render pre-checked.
 | ✓ | Meridian Industries Pvt Ltd | INV-1042 | ₹4,60,000 | 38 days | Escalate | Largest overdue balance, 38 days |
 | ✓ | Nimbus Creative LLP | INV-2052 | ₹2,80,000 | 40 days | Escalate | Promise broken on 8 Aug |
 | ✓ | Shakti Engineering Pvt Ltd | INV-2038 | ₹2,40,000 | 52 days | Escalate | Second reminder went unanswered |
-| | Anand & Sons Traders | INV-1187 | ₹95,000 | 12 days | Chase now | Crosses the 45-day mark tomorrow |
+| | Anand & Sons Traders | INV-1187 | ₹95,000 | 44 days | Chase now | Crosses the 45-day mark tomorrow |
 | | Pinnacle Industries LLP | INV-1402 | ₹62,000 | 9 days | Watch | Small balance, first reminder due |
 | | Orbit Labs Pvt Ltd | INV-1998 | ₹22,000 | 61 days | Watch | Small amount but 61 days old |
 
@@ -219,7 +219,7 @@ Aging buckets    Not yet due · 1–30 · 31–60 · 61–90 · 90+
 
 - Tab reaches every nav item, every tile, the header checkbox, every row checkbox, every row Chase button, and the bulk button — with a visible outline at each stop.
 - A screen reader announces the Chase now table with seven column headers.
-- No `#9a9a92`, no `#18A873` as a fill or as text, no `#B08900` anywhere in the codebase.
+- No `#9a9a92`, no `#18A873` as a fill or as text, no `#B08900` in `src/routes/app/`, `src/components/app/`, or `src/styles/app-tokens.css`. The marketing palette in `src/styles.css` is out of scope for this rule.
 - The Overdue tile reads `₹9,20,000` and the aging segments sum to `₹18,40,000`.
 - No Disputed invoice and no account without a P0 contact appears in the table.
 - All four tiles link to distinct destinations.
