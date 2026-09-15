@@ -9,5 +9,8 @@ declare module "bun:test" {
     toBe(expected: unknown): void;
     toHaveLength(length: number): void;
     toBeDefined(): void;
+    toBeNull(): void;
+    /** `actual` must be a thunk; the argument matches against the message. */
+    toThrow(expected?: string | RegExp): void;
   };
 }

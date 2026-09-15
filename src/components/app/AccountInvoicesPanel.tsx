@@ -66,7 +66,11 @@ export function AccountInvoicesPanel({
     return (
       <div className="flex flex-col items-start gap-3 py-6">
         <p className="text-body font-semibold text-fg">Nothing outstanding from {accountName}.</p>
-        <AppButton variant="secondary">Add an invoice</AppButton>
+        {/* Spec keeps this in the empty state, so it stays visible; invoice
+            creation is not in this build, so it does not stay enabled. */}
+        <AppButton variant="secondary" disabled title={ROW_ACTION_PENDING}>
+          Add an invoice
+        </AppButton>
       </div>
     );
   }

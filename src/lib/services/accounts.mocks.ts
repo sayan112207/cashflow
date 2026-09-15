@@ -42,7 +42,7 @@ const USER_IDS = {
   priya: "a5e70001-0000-4000-8000-000000000001",
 } as const;
 
-const CONTACT_IDS = {
+export const CONTACT_IDS = {
   rajat: "c0c00001-0000-4000-8000-000000000001",
   rajesh: "c0c00002-0000-4000-8000-000000000002",
   rsharma: "c0c00003-0000-4000-8000-000000000003",
@@ -973,8 +973,14 @@ export function mockUpdateContact(
     throw new MockAccountsConflictError("not_found", "Contact not found.");
   }
 
+  // A usable P0 can be lost two ways, and the rule has to cover both: marking it
+  // do-not-contact, or moving it off the P0 tier. Guarding only the first left
+  // "Move to P1" as a way to make the last P0 vanish and the account unchaseable.
   const nextDnc = body.do_not_contact ?? contact.do_not_contact;
-  if (contact.tier === "P0" && !contact.do_not_contact && nextDnc && usableP0Count(contacts) <= 1) {
+  const nextTier = body.tier ?? contact.tier;
+  const wasUsableP0 = contact.tier === "P0" && !contact.do_not_contact;
+  const staysUsableP0 = nextTier === "P0" && !nextDnc;
+  if (wasUsableP0 && !staysUsableP0 && usableP0Count(contacts) <= 1) {
     throw new MockAccountsConflictError(
       "last_p0_required",
       "An account needs a P0 contact to be chased. Add a replacement first.",
@@ -1088,8 +1094,10 @@ export function mockUpdateSettings(
   }
   if (body.owner_user_id !== undefined) {
     detail.settings.owner_user_id = body.owner_user_id;
-    detail.settings.owner_name =
-      body.owner_user_id === USER_IDS.priya ? "Priya Nair" : detail.settings.owner_name;
+    // Keeping the previous name when the id changes returns a row whose owner
+    // id and owner name describe two different people. Only Priya has a name in
+    // the fixtures; anything else — including Unassigned's null — has none.
+    detail.settings.owner_name = body.owner_user_id === USER_IDS.priya ? "Priya Nair" : null;
   }
   detail.updated_at = bumpUpdatedAt();
   appendActivity(accountId, "settings_changed", "Account settings updated.");

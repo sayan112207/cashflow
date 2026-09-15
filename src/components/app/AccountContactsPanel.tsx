@@ -80,6 +80,31 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
   const deleteContact = useDeleteAccountContact(accountId);
   const updateEscalation = useUpdateAccountEscalation(accountId);
 
+  /**
+   * Held from just before a mutation is fired until it settles.
+   *
+   * All three mutations send the rendered `data.updated_at` as `If-Match`, and
+   * only the server can mint the next one — the optimistic update deliberately
+   * does not invent it. So a second mutation fired against the same render
+   * carries a token the server has already spent, and returns `stale_write`.
+   *
+   * A ref rather than state, because the gap this closes is shorter than a
+   * render: blurring an escalation input fires its mutation, and the click that
+   * caused the blur fires another before React has re-rendered anything as
+   * disabled. `isPending` cannot see that; a ref set during the first event can.
+   * The disabled props below are the visible half of the same rule, not the
+   * enforcement.
+   */
+  const inFlight = useRef(false);
+
+  function runExclusive(fire: (release: () => void) => void): void {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    fire(() => {
+      inFlight.current = false;
+    });
+  }
+
   if (contactsQuery.isPending) {
     return (
       <div className="space-y-4" aria-busy="true" aria-label="Loading contacts">
@@ -113,11 +138,6 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
   const data = contactsQuery.data;
   if (!data) return null;
 
-  // The three mutations all send `data.updated_at` as If-Match, and the
-  // optimistic update deliberately does not invent a new one — only the server
-  // can mint the next token. So a second edit issued before the first response
-  // lands would reuse a token the server has already superseded. Gating the
-  // controls on this is the serialisation.
   const mutating = updateContact.isPending || deleteContact.isPending || updateEscalation.isPending;
 
   return (
@@ -125,23 +145,22 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
       data={data}
       busy={mutating}
       onUpdate={(contactId, body) => {
-        updateContact.mutate({
-          contactId,
-          body,
-          ifMatch: data.updated_at,
-        });
+        runExclusive((release) =>
+          updateContact.mutate(
+            { contactId, body, ifMatch: data.updated_at },
+            { onSettled: release },
+          ),
+        );
       }}
       onDelete={(contactId) => {
-        deleteContact.mutate({
-          contactId,
-          ifMatch: data.updated_at,
-        });
+        runExclusive((release) =>
+          deleteContact.mutate({ contactId, ifMatch: data.updated_at }, { onSettled: release }),
+        );
       }}
       onSaveEscalation={(body) => {
-        updateEscalation.mutate({
-          body,
-          ifMatch: data.updated_at,
-        });
+        runExclusive((release) =>
+          updateEscalation.mutate({ body, ifMatch: data.updated_at }, { onSettled: release }),
+        );
       }}
     />
   );
@@ -380,7 +399,7 @@ function ContactCard({
               {(["P0", "P1", "P2"] as const).map((tier) => (
                 <DropdownMenuItem
                   key={tier}
-                  disabled={contact.tier === tier}
+                  disabled={busy || contact.tier === tier}
                   className="cursor-pointer text-body font-semibold focus:bg-hovered"
                   onSelect={() => onUpdate(contact.contact_id, { tier })}
                 >
@@ -388,6 +407,7 @@ function ContactCard({
                 </DropdownMenuItem>
               ))}
               <DropdownMenuItem
+                disabled={busy}
                 className="cursor-pointer text-body font-semibold text-danger focus:bg-hovered"
                 onSelect={() => onDelete(contact.contact_id)}
               >

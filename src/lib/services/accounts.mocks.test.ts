@@ -1,8 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  ACCOUNT_IDS,
   accountListItemsFixture,
+  CONTACT_IDS,
+  getMockAccountContacts,
+  getMockAccountDetail,
   LONG_ACCOUNT_NAME,
+  mockUpdateContact,
+  mockUpdateSettings,
   sharmaDetailFixture,
 } from "@/lib/services/accounts.mocks";
 
@@ -56,5 +62,60 @@ describe("Sharma Traders detail fixtures", () => {
     const expectedOverdue =
       moneyToCents(sharmaDetailFixture.outstanding) - moneyToCents(notYetDue.amount);
     expect(centsToMoney(expectedOverdue)).toBe(sharmaDetailFixture.overdue);
+  });
+});
+
+describe("last usable P0 is protected", () => {
+  // Sharma has exactly one usable P0 (Rajat Mehta), so any edit that would stop
+  // it being a usable P0 has to be refused.
+  function sharmaToken(): string {
+    const contacts = getMockAccountContacts(ACCOUNT_IDS.sharma);
+    if (!contacts) throw new Error("missing Sharma contacts fixture");
+    return contacts.updated_at;
+  }
+
+  test("moving the only usable P0 to another tier is rejected", () => {
+    expect(() =>
+      mockUpdateContact(ACCOUNT_IDS.sharma, CONTACT_IDS.rajat, { tier: "P1" }, sharmaToken()),
+    ).toThrow("An account needs a P0 contact to be chased. Add a replacement first.");
+  });
+
+  test("marking the only usable P0 do-not-contact is rejected", () => {
+    expect(() =>
+      mockUpdateContact(
+        ACCOUNT_IDS.sharma,
+        CONTACT_IDS.rajat,
+        { do_not_contact: true, dnc_reason: "Left the company" },
+        sharmaToken(),
+      ),
+    ).toThrow("An account needs a P0 contact to be chased. Add a replacement first.");
+  });
+
+  test("a P0 edit that keeps it usable still goes through", () => {
+    const updated = mockUpdateContact(
+      ACCOUNT_IDS.sharma,
+      CONTACT_IDS.rajat,
+      { tier: "P0", designation: "Accounts Payable" },
+      sharmaToken(),
+    );
+    const rajat = updated.contacts.find((c) => c.contact_id === CONTACT_IDS.rajat);
+    expect(rajat?.tier).toBe("P0");
+    expect(rajat?.designation).toBe("Accounts Payable");
+  });
+});
+
+describe("account settings owner", () => {
+  test("clearing the owner clears the owner name with it", () => {
+    const before = getMockAccountDetail(ACCOUNT_IDS.sharma);
+    if (!before) throw new Error("missing Sharma detail fixture");
+
+    const after = mockUpdateSettings(
+      ACCOUNT_IDS.sharma,
+      { owner_user_id: null },
+      before.updated_at,
+    );
+
+    expect(after.settings.owner_user_id).toBeNull();
+    expect(after.settings.owner_name).toBeNull();
   });
 });
