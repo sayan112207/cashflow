@@ -42,8 +42,8 @@ Server Actions, no `server-only` package. See `src/routes/README.md`.
 
 ## Domain rules
 
-*Business rules that must not be violated. Each is enforced in the database —
-see the migration noted alongside.*
+_Business rules that must not be violated. Each is enforced in the database —
+see the migration noted alongside._
 
 - Invoice numbers normalize by trim, collapse whitespace, uppercase, strip edge
   punctuation. **DO NOT strip leading zeros** — `INV-0042` and `INV-42` may be
@@ -74,7 +74,7 @@ see the migration noted alongside.*
   `src/lib/services/`, never inline in a component, and never a raw Supabase
   call from the browser.
 - Tenancy is enforced by RLS in Postgres, not by application-level `where
-  org_id` filters. Never use the service-role key to satisfy a user-facing read.
+org_id` filters. Never use the service-role key to satisfy a user-facing read.
 - Invariants spanning two tables belong in a `public.*` RPC, not two chained
   supabase-js calls: PostgREST gives each call its own transaction.
 - No `any`. No TypeScript errors.

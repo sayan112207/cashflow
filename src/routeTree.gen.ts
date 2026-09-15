@@ -15,7 +15,17 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppAccountsRouteImport } from './routes/app/accounts'
+import { Route as AppAddEntriesRouteImport } from './routes/app/add-entries'
+import { Route as AppChasingRouteImport } from './routes/app/chasing'
+import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppInvoicesRouteImport } from './routes/app/invoices'
+import { Route as AppPaymentsRouteImport } from './routes/app/payments'
+import { Route as AppReportsRouteImport } from './routes/app/reports'
+import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AppAccountsIndexRouteImport } from './routes/app/accounts.index'
+import { Route as AppAccountsAccountIdRouteImport } from './routes/app/accounts.$accountId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -47,10 +57,60 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountsRoute = AppAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAddEntriesRoute = AppAddEntriesRouteImport.update({
+  id: '/add-entries',
+  path: '/add-entries',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChasingRoute = AppChasingRouteImport.update({
+  id: '/chasing',
+  path: '/chasing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInvoicesRoute = AppInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPaymentsRoute = AppPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppAccountsIndexRoute = AppAccountsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAccountsRoute,
+} as any)
+const AppAccountsAccountIdRoute = AppAccountsAccountIdRouteImport.update({
+  id: '/$accountId',
+  path: '/$accountId',
+  getParentRoute: () => AppAccountsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -59,16 +119,35 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
+  '/app/accounts': typeof AppAccountsRouteWithChildren
+  '/app/add-entries': typeof AppAddEntriesRoute
+  '/app/chasing': typeof AppChasingRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/invoices': typeof AppInvoicesRoute
+  '/app/payments': typeof AppPaymentsRoute
+  '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
+  '/app/accounts/': typeof AppAccountsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
+  '/app/add-entries': typeof AppAddEntriesRoute
+  '/app/chasing': typeof AppChasingRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/invoices': typeof AppInvoicesRoute
+  '/app/payments': typeof AppPaymentsRoute
+  '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app': typeof AppIndexRoute
+  '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
+  '/app/accounts': typeof AppAccountsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,8 +156,18 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
+  '/app/accounts': typeof AppAccountsRouteWithChildren
+  '/app/add-entries': typeof AppAddEntriesRoute
+  '/app/chasing': typeof AppChasingRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/invoices': typeof AppInvoicesRoute
+  '/app/payments': typeof AppPaymentsRoute
+  '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
+  '/app/accounts/': typeof AppAccountsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,10 +177,35 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/signup'
+    | '/app/accounts'
+    | '/app/add-entries'
+    | '/app/chasing'
+    | '/app/dashboard'
+    | '/app/invoices'
+    | '/app/payments'
+    | '/app/reports'
+    | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/app/accounts/$accountId'
+    | '/app/accounts/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/onboarding' | '/signup' | '/auth/callback' | '/app'
+  to:
+    | '/'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
+    | '/app/add-entries'
+    | '/app/chasing'
+    | '/app/dashboard'
+    | '/app/invoices'
+    | '/app/payments'
+    | '/app/reports'
+    | '/app/settings'
+    | '/auth/callback'
+    | '/app'
+    | '/app/accounts/$accountId'
+    | '/app/accounts'
   id:
     | '__root__'
     | '/'
@@ -99,8 +213,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/signup'
+    | '/app/accounts'
+    | '/app/add-entries'
+    | '/app/chasing'
+    | '/app/dashboard'
+    | '/app/invoices'
+    | '/app/payments'
+    | '/app/reports'
+    | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/app/accounts/$accountId'
+    | '/app/accounts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,6 +280,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/accounts': {
+      id: '/app/accounts'
+      path: '/accounts'
+      fullPath: '/app/accounts'
+      preLoaderRoute: typeof AppAccountsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/add-entries': {
+      id: '/app/add-entries'
+      path: '/add-entries'
+      fullPath: '/app/add-entries'
+      preLoaderRoute: typeof AppAddEntriesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/chasing': {
+      id: '/app/chasing'
+      path: '/chasing'
+      fullPath: '/app/chasing'
+      preLoaderRoute: typeof AppChasingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/invoices': {
+      id: '/app/invoices'
+      path: '/invoices'
+      fullPath: '/app/invoices'
+      preLoaderRoute: typeof AppInvoicesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/payments': {
+      id: '/app/payments'
+      path: '/payments'
+      fullPath: '/app/payments'
+      preLoaderRoute: typeof AppPaymentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reports': {
+      id: '/app/reports'
+      path: '/reports'
+      fullPath: '/app/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -163,14 +343,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/accounts/': {
+      id: '/app/accounts/'
+      path: '/'
+      fullPath: '/app/accounts/'
+      preLoaderRoute: typeof AppAccountsIndexRouteImport
+      parentRoute: typeof AppAccountsRoute
+    }
+    '/app/accounts/$accountId': {
+      id: '/app/accounts/$accountId'
+      path: '/$accountId'
+      fullPath: '/app/accounts/$accountId'
+      preLoaderRoute: typeof AppAccountsAccountIdRouteImport
+      parentRoute: typeof AppAccountsRoute
+    }
   }
 }
 
+interface AppAccountsRouteChildren {
+  AppAccountsAccountIdRoute: typeof AppAccountsAccountIdRoute
+  AppAccountsIndexRoute: typeof AppAccountsIndexRoute
+}
+
+const AppAccountsRouteChildren: AppAccountsRouteChildren = {
+  AppAccountsAccountIdRoute: AppAccountsAccountIdRoute,
+  AppAccountsIndexRoute: AppAccountsIndexRoute,
+}
+
+const AppAccountsRouteWithChildren = AppAccountsRoute._addFileChildren(
+  AppAccountsRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppAccountsRoute: typeof AppAccountsRouteWithChildren
+  AppAddEntriesRoute: typeof AppAddEntriesRoute
+  AppChasingRoute: typeof AppChasingRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppInvoicesRoute: typeof AppInvoicesRoute
+  AppPaymentsRoute: typeof AppPaymentsRoute
+  AppReportsRoute: typeof AppReportsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountsRoute: AppAccountsRouteWithChildren,
+  AppAddEntriesRoute: AppAddEntriesRoute,
+  AppChasingRoute: AppChasingRoute,
+  AppDashboardRoute: AppDashboardRoute,
+  AppInvoicesRoute: AppInvoicesRoute,
+  AppPaymentsRoute: AppPaymentsRoute,
+  AppReportsRoute: AppReportsRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

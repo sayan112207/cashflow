@@ -8,8 +8,9 @@ import type {
 /**
  * Fixture data for `VITE_USE_MOCKS=true`.
  *
- * Figures come from `docs/dashboard-spec.md`, which is authoritative. Three
- * values were overridden by explicit product decision and are marked below.
+ * Book totals come from `docs/accounts-spec.md` §0 (reconciled to per-invoice
+ * figures). Open-invoice count (63) and missing-contact count (2) are product
+ * decisions that override the older dashboard-spec / contract numbers.
  *
  * These are typed but not parsed here — the service runs every fixture through
  * the same zod schema as a real response, so a fixture that drifts from the
@@ -48,26 +49,30 @@ export const summaryFixture: DashboardSummary = {
   as_of: AS_OF,
   stale: false,
   tiles: {
-    total_outstanding: "1840000.00",
+    // accounts-spec §0: book totals move to match per-invoice figures.
+    total_outstanding: "5000000.00",
     account_count: 47,
-    overdue: "920000.00",
-    overdue_share_pct: 50.0,
-    // DECISION: 63, overriding the spec's and contract's 128.
+    overdue: "2800000.00",
+    overdue_share_pct: 56.0,
+    // DECISION: 63, overriding the older dashboard-spec / contract 128.
     open_invoice_count: 63,
-    // DECISION: 2, overriding the spec's and contract's 6. Note this now
-    // disagrees with `attention.accounts_without_p0` below — see the service
-    // notes; both feed UI that links to the same place.
+    // DECISION: 2, overriding the older dashboard-spec / contract 6. Counted
+    // from the accounts fixtures, where two of the twelve listed accounts
+    // resolve to `no_p0`. `attention.accounts_without_p0` is the same condition
+    // and links to the same filtered list, so it carries the same number.
     missing_contact_account_count: 2,
   },
   aging: [
-    { bucket: "Not yet due", amount: "920000.00", share_pct: 50.0 },
-    { bucket: "1–30", amount: "260000.00", share_pct: 14.1 },
-    { bucket: "31–60", amount: "240000.00", share_pct: 13.0 },
-    { bucket: "61–90", amount: "180000.00", share_pct: 9.8 },
-    { bucket: "90+", amount: "240000.00", share_pct: 13.0 },
+    { bucket: "Not yet due", amount: "2200000.00", share_pct: 44.0 },
+    { bucket: "1–30", amount: "600000.00", share_pct: 12.0 },
+    { bucket: "31–60", amount: "1400000.00", share_pct: 28.0 },
+    { bucket: "61–90", amount: "500000.00", share_pct: 10.0 },
+    { bucket: "90+", amount: "300000.00", share_pct: 6.0 },
   ],
   attention: {
-    accounts_without_p0: 6,
+    // Same condition and same destination as `missing_contact_account_count`
+    // above. Two fields disagreeing about one count is a bug on screen.
+    accounts_without_p0: 2,
     disputes_open: 1,
     // DECISION: the third attention item is broken promises, not payments
     // awaiting triage — Payments does not exist in this build.
@@ -121,9 +126,9 @@ export const chaseQueueFixture: ChaseQueue = {
       account_name: "Anand & Sons Traders",
       invoice_number: "INV-1187",
       amount_outstanding: "95000.00",
-      days_overdue: 44,
+      days_overdue: 12,
       priority_band: "Chase now",
-      priority_reason: "Crosses the 45-day mark tomorrow",
+      priority_reason: "No reminder sent yet, 12 days",
     },
     {
       invoice_id: INVOICE_IDS.inv1402,
@@ -177,7 +182,7 @@ export const allAgedSummaryFixture: DashboardSummary = {
   ...summaryFixture,
   tiles: {
     ...summaryFixture.tiles,
-    overdue: "1840000.00",
+    overdue: "5000000.00",
     overdue_share_pct: 100.0,
   },
   aging: [
@@ -185,7 +190,7 @@ export const allAgedSummaryFixture: DashboardSummary = {
     { bucket: "1–30", amount: "0.00", share_pct: 0.0 },
     { bucket: "31–60", amount: "0.00", share_pct: 0.0 },
     { bucket: "61–90", amount: "0.00", share_pct: 0.0 },
-    { bucket: "90+", amount: "1840000.00", share_pct: 100.0 },
+    { bucket: "90+", amount: "5000000.00", share_pct: 100.0 },
   ],
 };
 
