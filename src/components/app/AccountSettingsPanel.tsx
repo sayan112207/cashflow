@@ -67,7 +67,12 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
   const [closesAt, setClosesAt] = useState(s.send_window.closes_at);
   const [days, setDays] = useState<Weekday[]>(s.send_window.days);
   const [termsPreset, setTermsPreset] = useState(s.terms_preset);
-  const [termDays, setTermDays] = useState(s.term_days);
+  // `number | undefined`, not `number`: `Number("")` is 0, so coercing directly
+  // turns a cleared field into a real zero, which `term_days: positive()` only
+  // rejects at submit and which reads as "0 day terms" until then. A typed 0
+  // still comes through as 0 and is still rejected — the difference is that an
+  // empty field stays empty.
+  const [termDays, setTermDays] = useState<number | undefined>(s.term_days);
   const [isMsme, setIsMsme] = useState(s.is_msme);
   const [tdsSection, setTdsSection] = useState<TdsSection>(s.tds_section);
   const [tdsRate, setTdsRate] = useState<number | null>(s.tds_rate);
@@ -145,6 +150,9 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
       setReasonTouched(true);
       return;
     }
+    // Save is disabled while this is empty; the guard is here so the body below
+    // cannot be built from a missing value even if that gate ever moves.
+    if (termDays === undefined) return;
     save.mutate(
       {
         body: {
@@ -534,9 +542,12 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
                     type="number"
                     min={1}
                     max={365}
-                    value={termDays}
+                    value={termDays ?? ""}
                     disabled={locked}
-                    onChange={(e) => setTermDays(Number(e.target.value))}
+                    onChange={(e) => {
+                      const next = e.target.valueAsNumber;
+                      setTermDays(Number.isFinite(next) ? next : undefined);
+                    }}
                     className="tnum mt-1.5 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg"
                   />
                 </div>
@@ -671,7 +682,7 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
             <AppButton
               variant="primary"
               loading={save.isPending}
-              disabled={locked || !isDirty}
+              disabled={locked || !isDirty || termDays === undefined}
               onClick={submit}
             >
               Save changes
@@ -714,7 +725,7 @@ type SettingsSnapshot = {
   closesAt: string;
   days: Weekday[];
   termsPreset: PaymentTermsPreset;
-  termDays: number;
+  termDays: number | undefined;
   isMsme: boolean;
   tdsSection: TdsSection;
   tdsRate: number | null;

@@ -1,7 +1,7 @@
 @import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
 @import "./styles/app-tokens.css";
+@source "../src";
 
 /*
  * Design system definition.
@@ -173,16 +173,20 @@
 /*
  * Product-app palette, scoped.
  *
- * app-tokens.css is imported at the top so its tokens generate utilities. Five
- * of its names — page, card, accent, danger, warn — are also landing tokens.
- * The @theme inline block above is declared later, so it wins for those five
- * globally and the marketing pages keep their palette.
+ * app-tokens.css is imported at the top so all 40 of its tokens generate
+ * utilities. Five of its names — page, card, accent, danger, warn — are also
+ * landing tokens. The @theme inline block above is declared later, so it wins
+ * for those five globally and the marketing pages keep their palette.
  *
- * This class re-points the raw variables those utilities compile down to, so
- * inside the app shell they resolve to the app values instead.
+ * This class re-points the raw variables those five utilities compile down to,
+ * so inside the app shell they resolve to the app values instead. Only page,
+ * accent and warn actually change; card and danger are the same colour in both
+ * palettes and are listed to keep the set self-documenting.
  *
  * Note --accent: the landing (and shadcn) treat it as a neutral hover surface,
- * the app palette as brand green. Use bg-hovered for neutral hovers here.
+ * the app palette as brand green for filled buttons. Any shadcn component whose
+ * variant relies on hover:bg-accent will hover green inside .app-theme — use
+ * bg-hovered for neutral hovers here.
  */
 .app-theme {
   --page: #fcfcfa;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AppButton } from "@/components/app/AppButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,13 +25,37 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
 
   const isPaused = detail.settings.paused_at !== null;
 
+  /**
+   * `isPaused` reads the optimistic copy, so a pending pause flips this branch
+   * to Resume at once — and both actions send the same `detail.updated_at` as
+   * If-Match. The server has already spent that token on the first, so the
+   * second returns stale_write and the optimistic update rolls back.
+   *
+   * The ref rather than `mutating` alone is what enforces it: two activations
+   * dispatched in the same batch both read the old rendered `false`. `mutating`
+   * is the visible half.
+   */
+  const mutating = pauseMutation.isPending || resumeMutation.isPending;
+  const inFlight = useRef(false);
+
+  function runExclusive(fire: (release: () => void) => void): void {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    fire(() => {
+      inFlight.current = false;
+    });
+  }
+
   if (isPaused) {
     return (
       <AppButton
         variant="secondary"
         loading={resumeMutation.isPending}
+        disabled={mutating}
         onClick={() => {
-          resumeMutation.mutate({ ifMatch: detail.updated_at });
+          runExclusive((release) =>
+            resumeMutation.mutate({ ifMatch: detail.updated_at }, { onSettled: release }),
+          );
         }}
       >
         Resume chasing
@@ -40,19 +64,23 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
   }
 
   function submitPause() {
-    pauseMutation.mutate(
-      {
-        body: { reason, ...(until.length > 0 ? { until } : {}) },
-        ifMatch: detail.updated_at,
-      },
-      { onSuccess: () => setOpen(false) },
+    runExclusive((release) =>
+      pauseMutation.mutate(
+        {
+          body: { reason, ...(until.length > 0 ? { until } : {}) },
+          ifMatch: detail.updated_at,
+        },
+        { onSuccess: () => setOpen(false), onSettled: release },
+      ),
     );
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <AppButton variant="secondary">Pause chasing</AppButton>
+        <AppButton variant="secondary" disabled={mutating}>
+          Pause chasing
+        </AppButton>
       </PopoverTrigger>
 
       <PopoverContent align="end" className="w-[280px] rounded-card border-hairline bg-card p-4">
@@ -108,7 +136,12 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
           <AppButton variant="text" onClick={() => setOpen(false)}>
             Cancel
           </AppButton>
-          <AppButton variant="primary" loading={pauseMutation.isPending} onClick={submitPause}>
+          <AppButton
+            variant="primary"
+            loading={pauseMutation.isPending}
+            disabled={mutating}
+            onClick={submitPause}
+          >
             Confirm
           </AppButton>
         </div>

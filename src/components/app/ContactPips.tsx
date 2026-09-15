@@ -54,8 +54,7 @@ export function ContactPips({ contacts }: ContactPipsProps) {
 
 function Pip({ tier, state }: { tier: ContactTier; state: ContactPip }) {
   const name = accessibleName(tier, state);
-  const box =
-    "inline-flex size-3.5 shrink-0 items-center justify-center rounded-check";
+  const box = "inline-flex size-3.5 shrink-0 items-center justify-center rounded-check";
 
   if (state === "missing") {
     // Only a missing P0 is the danger ✕ — P1/P2 absence is a hollow pip.

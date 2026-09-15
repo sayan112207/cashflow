@@ -23,6 +23,7 @@ import type {
   UpdateEscalationBody,
 } from "@/lib/schemas/accounts";
 import { updateChasingSettingsBodySchema } from "@/lib/schemas/accounts";
+import { dncReasonIsPresent } from "@/lib/schemas/accounts";
 
 /**
  * Fixture data for `VITE_USE_MOCKS=true`, figures from `docs/accounts-spec.md`.
@@ -162,7 +163,7 @@ function makeChasingSettings({
   };
 }
 
-const CONTACT_IDS = {
+export const CONTACT_IDS = {
   rajat: "c0c00001-0000-4000-8000-000000000001",
   rajesh: "c0c00002-0000-4000-8000-000000000002",
   rsharma: "c0c00003-0000-4000-8000-000000000003",
@@ -776,8 +777,7 @@ export const sharmaActivityFixture: AccountActivity = {
       occurred_at: "2026-08-12T16:40:00+05:30",
       title: "Promised 22 Aug 2026",
       title_tone: "warn",
-      detail:
-        "Rajat Mehta committed to ₹54,000 from the debtor page. Reminders paused until then.",
+      detail: "Rajat Mehta committed to ₹54,000 from the debtor page. Reminders paused until then.",
       link_label: null,
       link_href: null,
     },
@@ -799,8 +799,7 @@ export const sharmaActivityFixture: AccountActivity = {
       occurred_at: "2026-08-05T09:00:00+05:30",
       title: "Email bounced",
       title_tone: "danger",
-      detail:
-        "priya@sharmatraders.com is no longer valid. Replaced with rajat@sharmatraders.com.",
+      detail: "priya@sharmatraders.com is no longer valid. Replaced with rajat@sharmatraders.com.",
       link_label: "Open contacts",
       link_href: `/app/accounts/${ACCOUNT_IDS.sharma}?tab=contacts`,
     },
@@ -1136,7 +1135,10 @@ export function getMockAccountActivity(
 }
 
 function bumpUpdatedAt(): string {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00");
+  // Milliseconds are kept deliberately. This value is the If-Match token, and
+  // truncating to whole seconds leaves a stale token valid for up to a second,
+  // which makes the stale_write path untestable in mock mode.
+  return new Date().toISOString().replace(/Z$/, "+00:00");
 }
 
 /** Usable P0 = tier P0 and not DNC. Bounced still counts — replace before remove. */
@@ -1241,11 +1243,25 @@ export function mockUpdateContact(
     throw new MockAccountsConflictError("not_found", "Contact not found.");
   }
 
+  // A usable P0 can be lost two ways, and the rule has to cover both: marking it
+  // do-not-contact, or moving it off the P0 tier. Guarding only the first left
+  // "Move to P1" as a way to make the last P0 vanish and the account unchaseable.
   const nextDnc = body.do_not_contact ?? contact.do_not_contact;
-  if (contact.tier === "P0" && !contact.do_not_contact && nextDnc && usableP0Count(contacts) <= 1) {
+  const nextTier = body.tier ?? contact.tier;
+  const wasUsableP0 = contact.tier === "P0" && !contact.do_not_contact;
+  const staysUsableP0 = nextTier === "P0" && !nextDnc;
+  if (wasUsableP0 && !staysUsableP0 && usableP0Count(contacts) <= 1) {
     throw new MockAccountsConflictError(
       "last_p0_required",
       "An account needs a P0 contact to be chased. Add a replacement first.",
+    );
+  }
+
+  const merged = { ...contact, ...body };
+  if (!dncReasonIsPresent(merged)) {
+    throw new MockAccountsConflictError(
+      "dnc_reason_required",
+      "Add a reason before marking a contact do-not-contact.",
     );
   }
 
@@ -1308,6 +1324,11 @@ export function mockUpdateEscalation(
   contacts.p1_after_days = body.p1_after_days;
   contacts.p2_after_days = body.p2_after_days;
   contacts.updated_at = bumpUpdatedAt();
+  appendActivity(
+    accountId,
+    "escalation_changed",
+    `Escalation timing changed to P1 after ${body.p1_after_days} days, P2 after ${body.p2_after_days} days.`,
+  );
   return structuredClone(contacts);
 }
 
@@ -1367,9 +1388,10 @@ export function mockUpdateChasingSettings(
   settings.tds_section = payload.tds_section;
   settings.tds_rate = payload.tds_rate;
   settings.owner_user_id = payload.owner_user_id;
+  // An id with no matching owner has no name — keeping the previous one would
+  // return a row whose owner id and owner name describe two different people.
   settings.owner_name =
-    ASSIGNABLE_OWNERS.find((owner) => owner.id === payload.owner_user_id)?.name ??
-    (payload.owner_user_id === null ? null : settings.owner_name);
+    ASSIGNABLE_OWNERS.find((owner) => owner.id === payload.owner_user_id)?.name ?? null;
   settings.notes = payload.notes;
 
   if (payload.chase_mode === "stopped" && payload.stop_reason) {
@@ -1382,6 +1404,7 @@ export function mockUpdateChasingSettings(
   }
 
   detail.updated_at = bumpUpdatedAt();
+  appendActivity(accountId, "settings_changed", "Account settings updated.");
   return structuredClone(detail);
 }
 
@@ -1429,6 +1452,15 @@ export function mockPauseAccount(
   }
   if (!body.reason) {
     throw new MockAccountsConflictError("pause_reason_required", "Add a reason before pausing.");
+  }
+  // Contract §2.4. Compared as a plain date string rather than through Date:
+  // paused_until is a calendar date in the org timezone, and parsing it to an
+  // instant would make the boundary depend on where the code runs.
+  if (body.until !== undefined && body.until < new Date().toISOString().slice(0, 10)) {
+    throw new MockAccountsConflictError(
+      "pause_until_past",
+      "Pick a date in the future, or leave it blank to pause indefinitely.",
+    );
   }
   const now = bumpUpdatedAt();
   detail.settings.paused_at = now;

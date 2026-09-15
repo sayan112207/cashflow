@@ -26,6 +26,12 @@ import type {
 import { AccountsApiError, accountsQueryKeys, getAccountContacts } from "@/lib/services/accounts";
 import { cn } from "@/lib/utils";
 
+/**
+ * Controls whose flow does not exist yet are disabled rather than left live.
+ * An enabled button that does nothing reads as a broken app, not a pending one.
+ */
+const ADD_CONTACT_PENDING = "Adding and replacing contacts is not in this build yet.";
+
 const TIERS: {
   id: ContactTier;
   heading: string;
@@ -74,6 +80,31 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
   const deleteContact = useDeleteAccountContact(accountId);
   const updateEscalation = useUpdateAccountEscalation(accountId);
 
+  /**
+   * Held from just before a mutation is fired until it settles.
+   *
+   * All three mutations send the rendered `data.updated_at` as `If-Match`, and
+   * only the server can mint the next one — the optimistic update deliberately
+   * does not invent it. So a second mutation fired against the same render
+   * carries a token the server has already spent, and returns `stale_write`.
+   *
+   * A ref rather than state, because the gap this closes is shorter than a
+   * render: blurring an escalation input fires its mutation, and the click that
+   * caused the blur fires another before React has re-rendered anything as
+   * disabled. `isPending` cannot see that; a ref set during the first event can.
+   * The disabled props below are the visible half of the same rule, not the
+   * enforcement.
+   */
+  const inFlight = useRef(false);
+
+  function runExclusive(fire: (release: () => void) => void): void {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    fire(() => {
+      inFlight.current = false;
+    });
+  }
+
   if (contactsQuery.isPending) {
     return (
       <div className="space-y-4" aria-busy="true" aria-label="Loading contacts">
@@ -107,27 +138,29 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
   const data = contactsQuery.data;
   if (!data) return null;
 
+  const mutating = updateContact.isPending || deleteContact.isPending || updateEscalation.isPending;
+
   return (
     <ContactsLadder
       data={data}
+      busy={mutating}
       onUpdate={(contactId, body) => {
-        updateContact.mutate({
-          contactId,
-          body,
-          ifMatch: data.updated_at,
-        });
+        runExclusive((release) =>
+          updateContact.mutate(
+            { contactId, body, ifMatch: data.updated_at },
+            { onSettled: release },
+          ),
+        );
       }}
       onDelete={(contactId) => {
-        deleteContact.mutate({
-          contactId,
-          ifMatch: data.updated_at,
-        });
+        runExclusive((release) =>
+          deleteContact.mutate({ contactId, ifMatch: data.updated_at }, { onSettled: release }),
+        );
       }}
       onSaveEscalation={(body) => {
-        updateEscalation.mutate({
-          body,
-          ifMatch: data.updated_at,
-        });
+        runExclusive((release) =>
+          updateEscalation.mutate({ body, ifMatch: data.updated_at }, { onSettled: release }),
+        );
       }}
     />
   );
@@ -135,11 +168,13 @@ export function AccountContactsPanel({ accountId }: AccountContactsPanelProps) {
 
 function ContactsLadder({
   data,
+  busy,
   onUpdate,
   onDelete,
   onSaveEscalation,
 }: {
   data: AccountContacts;
+  busy: boolean;
   onUpdate: (contactId: string, body: UpdateContactBody) => void;
   onDelete: (contactId: string) => void;
   onSaveEscalation: (body: { p1_after_days: number; p2_after_days: number }) => void;
@@ -199,7 +234,9 @@ function ContactsLadder({
                     No primary contact. This account can't be chased.
                   </p>
                   <div className="mt-3">
-                    <AppButton variant="primary">Add a contact</AppButton>
+                    <AppButton variant="primary" disabled title={ADD_CONTACT_PENDING}>
+                      Add a contact
+                    </AppButton>
                   </div>
                 </div>
               ) : null}
@@ -209,13 +246,16 @@ function ContactsLadder({
                   <ContactCard
                     key={contact.contact_id}
                     contact={contact}
+                    busy={busy}
                     onUpdate={onUpdate}
                     onDelete={onDelete}
                   />
                 ))}
               </div>
 
-              <AppButton variant="secondary">+ Add contact</AppButton>
+              <AppButton variant="secondary" disabled title={ADD_CONTACT_PENDING}>
+                + Add contact
+              </AppButton>
             </section>
           );
         })}
@@ -233,7 +273,8 @@ function ContactsLadder({
               value={Number.isFinite(p1Days) ? p1Days : ""}
               onChange={(event) => setP1(Number(event.target.value))}
               onBlur={() => trySaveEscalation(p1Ref.current, p2Ref.current)}
-              className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum"
+              disabled={busy}
+              className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum disabled:opacity-60"
             />
           </label>{" "}
           days overdue
@@ -249,7 +290,8 @@ function ContactsLadder({
               value={Number.isFinite(p2Days) ? p2Days : ""}
               onChange={(event) => setP2(Number(event.target.value))}
               onBlur={() => trySaveEscalation(p1Ref.current, p2Ref.current)}
-              className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum"
+              disabled={busy}
+              className="w-16 rounded-input border border-stroke bg-card px-2 py-1 text-body font-semibold text-fg tnum disabled:opacity-60"
             />
           </label>{" "}
           days overdue
@@ -285,17 +327,21 @@ function BounceWarningStrip({ contact }: { contact: AccountContact }) {
         <span className="font-bold">{contact.name}'s email is bouncing.</span> Nothing has reached
         this account since {ago}.
       </p>
-      <AppButton variant="secondary">Replace contact</AppButton>
+      <AppButton variant="secondary" disabled title={ADD_CONTACT_PENDING}>
+        Replace contact
+      </AppButton>
     </div>
   );
 }
 
 function ContactCard({
   contact,
+  busy,
   onUpdate,
   onDelete,
 }: {
   contact: AccountContact;
+  busy: boolean;
   onUpdate: (contactId: string, body: UpdateContactBody) => void;
   onDelete: (contactId: string) => void;
 }) {
@@ -327,7 +373,8 @@ function ContactCard({
                   tier: event.target.value as ContactTier,
                 })
               }
-              className="rounded-input border border-stroke bg-card px-2 py-1 text-prose font-semibold text-fg"
+              disabled={busy}
+              className="rounded-input border border-stroke bg-card px-2 py-1 text-prose font-semibold text-fg disabled:opacity-60"
             >
               <option value="P0">P0</option>
               <option value="P1">P1</option>
@@ -352,7 +399,7 @@ function ContactCard({
               {(["P0", "P1", "P2"] as const).map((tier) => (
                 <DropdownMenuItem
                   key={tier}
-                  disabled={contact.tier === tier}
+                  disabled={busy || contact.tier === tier}
                   className="cursor-pointer text-body font-semibold focus:bg-hovered"
                   onSelect={() => onUpdate(contact.contact_id, { tier })}
                 >
@@ -360,6 +407,7 @@ function ContactCard({
                 </DropdownMenuItem>
               ))}
               <DropdownMenuItem
+                disabled={busy}
                 className="cursor-pointer text-body font-semibold text-danger focus:bg-hovered"
                 onSelect={() => onDelete(contact.contact_id)}
               >
@@ -374,30 +422,35 @@ function ContactCard({
         <ChannelSwitch
           label="Email"
           name={contact.name}
+          busy={busy}
           checked={contact.channel_email}
           onCheckedChange={(checked) => onUpdate(contact.contact_id, { channel_email: checked })}
         />
         <ChannelSwitch
           label="WhatsApp"
           name={contact.name}
+          busy={busy}
           checked={contact.channel_whatsapp}
           onCheckedChange={(checked) => onUpdate(contact.contact_id, { channel_whatsapp: checked })}
         />
         <ChannelSwitch
           label="SMS"
           name={contact.name}
+          busy={busy}
           checked={contact.channel_sms}
           onCheckedChange={(checked) => onUpdate(contact.contact_id, { channel_sms: checked })}
         />
         <ChannelSwitch
           label="Always CC"
           name={contact.name}
+          busy={busy}
           checked={contact.always_cc}
           onCheckedChange={(checked) => onUpdate(contact.contact_id, { always_cc: checked })}
         />
         <ChannelSwitch
           label="Do not contact"
           name={contact.name}
+          busy={busy}
           checked={contact.do_not_contact}
           onCheckedChange={(checked) =>
             onUpdate(contact.contact_id, {
@@ -420,7 +473,8 @@ function ContactCard({
                 dnc_reason: dncReason || "No reason given",
               })
             }
-            className="mt-1 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg"
+            disabled={busy}
+            className="mt-1 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg disabled:opacity-60"
           />
         </label>
       ) : null}
@@ -435,7 +489,8 @@ function ContactCard({
               language: event.target.value as ContactLanguage,
             })
           }
-          className="rounded-input border border-stroke bg-card px-2 py-1 text-prose font-semibold text-fg"
+          disabled={busy}
+          className="rounded-input border border-stroke bg-card px-2 py-1 text-prose font-semibold text-fg disabled:opacity-60"
         >
           {LANGUAGE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -452,11 +507,13 @@ function ChannelSwitch({
   label,
   name,
   checked,
+  busy,
   onCheckedChange,
 }: {
   label: string;
   name: string;
   checked: boolean;
+  busy: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
@@ -465,9 +522,10 @@ function ChannelSwitch({
       role="switch"
       aria-checked={checked}
       aria-label={`${label} for ${name}`}
+      disabled={busy}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "rounded-pill px-2.5 py-1 text-pill font-semibold transition-colors duration-150",
+        "rounded-pill px-2.5 py-1 text-pill font-semibold transition-colors duration-150 disabled:opacity-60",
         checked ? "bg-accent-tint text-accent" : "bg-alt text-fg-soft",
       )}
     >

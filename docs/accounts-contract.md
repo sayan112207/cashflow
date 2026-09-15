@@ -79,7 +79,7 @@ id · org_id · account_id · actor_user_id (nullable — system events)
 kind activity_kind · summary text · invoice_id · contact_id · occurred_at
 ```
 
-Enum `activity_kind`: `invoice_created | invoice_edited | import | payment_received | promise_made | promise_broken | dispute_raised | contact_added | contact_edited | contact_removed | bounce | pause | resume | message_sent`
+Enum `activity_kind`: `invoice_created | invoice_edited | import | payment_received | promise_made | promise_broken | dispute_raised | contact_added | contact_edited | contact_removed | escalation_changed | settings_changed | bounce | pause | resume | message_sent`
 
 `summary` is the plain sentence, composed by the backend. The frontend renders it verbatim and never builds it from parts.
 

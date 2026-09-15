@@ -190,7 +190,7 @@ export function usePauseAccount(accountId: string) {
 
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey, data);
-      void queryClient.invalidateQueries({ queryKey: accountsQueryKeys.activity(accountId) });
+      void queryClient.invalidateQueries({ queryKey: accountsQueryKeys.activityRoot(accountId) });
     },
   });
 }
@@ -233,7 +233,7 @@ export function useResumeAccount(accountId: string) {
 
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey, data);
-      void queryClient.invalidateQueries({ queryKey: accountsQueryKeys.activity(accountId) });
+      void queryClient.invalidateQueries({ queryKey: accountsQueryKeys.activityRoot(accountId) });
     },
   });
 }

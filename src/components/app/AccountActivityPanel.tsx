@@ -76,10 +76,7 @@ function ActivityEntry({ item, isLast }: { item: AccountActivityItem; isLast: bo
   return (
     <li className="relative flex gap-4 pb-6 last:pb-0">
       {isLast ? null : (
-        <span
-          aria-hidden="true"
-          className="absolute top-3 left-[3px] h-full w-px bg-hairline"
-        />
+        <span aria-hidden="true" className="absolute top-3 left-[3px] h-full w-px bg-hairline" />
       )}
       <span
         aria-hidden="true"

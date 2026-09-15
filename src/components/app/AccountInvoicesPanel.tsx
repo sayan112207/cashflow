@@ -20,6 +20,13 @@ import type { AgingBucket } from "@/lib/schemas/dashboard";
 import { AccountsApiError } from "@/lib/services/accounts";
 import { cn } from "@/lib/utils";
 
+/**
+ * The row actions have no mutation flows behind them in this build. They stay
+ * visible because the row layout is part of what this PR is for, but an enabled
+ * button that does nothing reads as broken rather than unfinished.
+ */
+const ROW_ACTION_PENDING = "Invoice actions are not in this build yet.";
+
 type AccountInvoicesPanelProps = {
   accountName: string;
   data: AccountInvoices | undefined;
@@ -66,7 +73,11 @@ export function AccountInvoicesPanel({
     return (
       <div className="flex flex-col items-start gap-3 py-6">
         <p className="text-body font-semibold text-fg">Nothing outstanding from {accountName}.</p>
-        <AppButton variant="secondary">Add an invoice</AppButton>
+        {/* Spec keeps this in the empty state, so it stays visible; invoice
+            creation is not in this build, so it does not stay enabled. */}
+        <AppButton variant="secondary" disabled title={ROW_ACTION_PENDING}>
+          Add an invoice
+        </AppButton>
       </div>
     );
   }
@@ -189,17 +200,15 @@ function InvoiceRow({ invoice }: { invoice: AccountInvoice }) {
         {formatINR(invoice.amount_outstanding)}
       </TableCell>
       <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
-        <InvoiceStatusBadge
-          label={invoiceStatusLabel(invoice.status, invoice.days_overdue)}
-        />
+        <InvoiceStatusBadge label={invoiceStatusLabel(invoice.status, invoice.days_overdue)} />
       </TableCell>
       <TableCell className="whitespace-nowrap border-b border-hairline px-3 py-3">
         <div className="flex items-center justify-end gap-1">
           <AppButton
             variant="text"
             className="row-action"
-            disabled={chaseDisabled}
-            {...(invoice.chase_disabled_reason ? { title: invoice.chase_disabled_reason } : {})}
+            disabled
+            title={invoice.chase_disabled_reason ?? ROW_ACTION_PENDING}
             aria-label={
               chaseDisabled
                 ? `Chase ${invoice.number} (disabled: ${invoice.chase_disabled_reason})`
@@ -211,11 +220,19 @@ function InvoiceRow({ invoice }: { invoice: AccountInvoice }) {
           <AppButton
             variant="text"
             className="row-action"
+            disabled
+            title={ROW_ACTION_PENDING}
             aria-label={`Mark ${invoice.number} paid`}
           >
             Mark paid
           </AppButton>
-          <AppButton variant="text" className="row-action" aria-label={`Snooze ${invoice.number}`}>
+          <AppButton
+            variant="text"
+            className="row-action"
+            disabled
+            title={ROW_ACTION_PENDING}
+            aria-label={`Snooze ${invoice.number}`}
+          >
             Snooze
           </AppButton>
         </div>
