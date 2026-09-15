@@ -8,7 +8,10 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
-  /** Optional — absent means mocks off. Must be exactly "true" or "false" when set. */
+  /**
+   * Optional, and a plain string here: `env.public.ts` is what narrows it to
+   * exactly "true" or "false". Absent means mocks off.
+   */
   readonly VITE_USE_MOCKS?: string;
 }
 

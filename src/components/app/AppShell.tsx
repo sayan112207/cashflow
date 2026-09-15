@@ -1,8 +1,9 @@
-import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useState, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { WORDMARK } from "@/lib/brand";
+import { signOut } from "@/lib/services/auth.service";
 
 /**
  * The product-app chrome: a 240px sticky sidebar beside the main region.
@@ -53,6 +54,21 @@ type AppShellProps = {
 export function AppShell({ user, orgName, children }: AppShellProps) {
   // displayName is "" when the profile row is missing or hidden by RLS.
   const label = user.displayName || user.email || "";
+  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
+
+  // Sign-out lived in the old /app header that this shell replaced. It has to
+  // live here instead: the shell is the only chrome left, so dropping it would
+  // leave the app with no way out of a session.
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await signOut();
+      await navigate({ to: "/login" });
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   return (
     <div className="app-theme app-shell flex min-h-screen">
@@ -105,12 +121,20 @@ export function AppShell({ user, orgName, children }: AppShellProps) {
             </span>
           )}
           {/* min-w-0 lets the truncation actually engage inside a flex row. */}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-prose font-semibold text-fg">{label}</p>
             <p className="truncate text-eyebrow font-normal text-fg-muted" title={orgName}>
               {orgName}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="shrink-0 rounded-nav px-2 py-1 text-eyebrow font-semibold text-fg-muted transition-colors hover:bg-hovered hover:text-fg disabled:opacity-60"
+          >
+            {signingOut ? "Signing out…" : "Sign out"}
+          </button>
         </div>
       </aside>
 
