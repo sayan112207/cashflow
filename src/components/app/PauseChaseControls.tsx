@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AppButton } from "@/components/app/AppButton";
@@ -38,6 +38,29 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
   // flight.
   const mutating = pauseMutation.isPending || resumeMutation.isPending;
 
+  /**
+   * Held from just before a mutation is fired until it settles.
+   *
+   * `mutating` is a rendered value, so it cannot close a gap shorter than a
+   * render — two activations dispatched from the same batch both see the old
+   * `false`. Less reachable here than in the contacts ladder, where an input's
+   * blur and the click that caused it fire in one go, but the failure is the
+   * same: both requests carry the `detail.updated_at` from the same render, and
+   * the server has already spent that token on the first.
+   *
+   * The disabled props are the visible half of the rule; this is the half that
+   * actually enforces it.
+   */
+  const inFlight = useRef(false);
+
+  function runExclusive(fire: (release: () => void) => void): void {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    fire(() => {
+      inFlight.current = false;
+    });
+  }
+
   // The date the new pause would start from; the contract rejects a
   // `paused_until` before today, so the picker should not offer one.
   const today = new Date().toISOString().slice(0, 10);
@@ -51,22 +74,25 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
   function confirmPause() {
     const trimmed = reason.trim();
     if (!trimmed) return;
-    pauseMutation.mutate(
-      {
-        body: {
-          reason: trimmed,
-          ...(until.trim().length > 0 ? { until } : {}),
+    runExclusive((release) =>
+      pauseMutation.mutate(
+        {
+          body: {
+            reason: trimmed,
+            ...(until.trim().length > 0 ? { until } : {}),
+          },
+          ifMatch: detail.updated_at,
         },
-        ifMatch: detail.updated_at,
-      },
-      {
-        onSuccess: () => {
-          setOpen(false);
-          setReason("");
-          setUntil("");
-          toast.success("Chasing paused.");
+        {
+          onSuccess: () => {
+            setOpen(false);
+            setReason("");
+            setUntil("");
+            toast.success("Chasing paused.");
+          },
+          onSettled: release,
         },
-      },
+      ),
     );
   }
 
@@ -77,9 +103,11 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
         loading={resumeMutation.isPending}
         disabled={mutating}
         onClick={() => {
-          resumeMutation.mutate(
-            { ifMatch: detail.updated_at },
-            { onSuccess: () => toast.success("Chasing resumed.") },
+          runExclusive((release) =>
+            resumeMutation.mutate(
+              { ifMatch: detail.updated_at },
+              { onSuccess: () => toast.success("Chasing resumed."), onSettled: release },
+            ),
           );
         }}
       >
