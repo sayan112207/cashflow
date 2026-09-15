@@ -246,9 +246,13 @@ Do not install a drag library for this build. If you think you need one, stop an
 
 ### Rules
 
-- Exactly one P0 per account, required before chasing.
+- At least one usable P0 per account, required before chasing.
 - P1 and P2 optional. P0-only is valid and common.
-- Multiple contacts may share a tier — two AP staff both get the P0 message.
+- Multiple contacts may share a tier, P0 included — two AP staff both get the
+  P0 message. The database rule is at-least-one-to-chase, not exactly-one:
+  see accounts-contract.md §1, which drops the `(account_id, tier)` unique
+  index. `docs/project-conventions.md` and the `contacts_one_active_p0_per_account`
+  index still say at-most-one and are the migration this PR asks for.
 - Promoting a contact demotes nobody. Tiers are labels, not slots.
 - Removing the last P0 is blocked with `An account needs a P0 contact to be chased. Add a replacement first.`
 

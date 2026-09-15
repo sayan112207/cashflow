@@ -26,6 +26,20 @@ import {
 import { AccountsApiError } from "@/lib/services/accounts";
 import { cn } from "@/lib/utils";
 
+/**
+ * The value a number input should hand to the form, with "empty" kept empty.
+ *
+ * `Number("")` is `0`, so coercing directly turns a cleared field into a real
+ * zero: clearing the TDS rate would save 0% rather than failing, and clearing
+ * credit days would store a 0 that only the submit-time `.positive()` check
+ * catches. `valueAsNumber` is `NaN` for both empty and unparseable input, which
+ * is what `undefined` is for here — while a typed `0` still comes through as 0.
+ */
+function numericFieldValue(input: HTMLInputElement): number | undefined {
+  const value = input.valueAsNumber;
+  return Number.isFinite(value) ? value : undefined;
+}
+
 /** Org users for the owner select — expand when a users list endpoint exists. */
 const OWNER_OPTIONS = [{ id: "a5e70001-0000-4000-8000-000000000001", name: "Priya Nair" }] as const;
 
@@ -148,7 +162,7 @@ export function AccountSettingsPanel({ accountId, detail }: AccountSettingsPanel
                   min={1}
                   className={cn(fieldClass, "tnum")}
                   {...field}
-                  onChange={(event) => field.onChange(Number(event.target.value))}
+                  onChange={(event) => field.onChange(numericFieldValue(event.target))}
                 />
               </FormControl>
               <FormMessage />
@@ -210,7 +224,7 @@ export function AccountSettingsPanel({ accountId, detail }: AccountSettingsPanel
                   step={0.01}
                   className={cn(fieldClass, "tnum")}
                   {...field}
-                  onChange={(event) => field.onChange(Number(event.target.value))}
+                  onChange={(event) => field.onChange(numericFieldValue(event.target))}
                 />
               </FormControl>
               <FormMessage />

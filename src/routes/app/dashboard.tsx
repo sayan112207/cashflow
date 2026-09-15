@@ -19,9 +19,8 @@ function DashboardPage() {
     <>
       <h1 className="text-title font-bold tracking-tight text-fg">Dashboard</h1>
       <p className="mt-2 max-w-prose text-prose font-normal text-fg-soft">
-        The backend is live — accounts, contacts, invoices, payments and reminders all exist with
-        their rules enforced in the database. The screens for importing invoices and chasing them
-        are the next piece of work.
+        Nothing to show here yet. Accounts is the first screen built against real data — this one
+        follows.
       </p>
     </>
   );

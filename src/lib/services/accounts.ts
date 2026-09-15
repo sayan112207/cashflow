@@ -62,6 +62,15 @@ export const accountsQueryKeys = {
   payments: (accountId: string) => ["accounts", "payments", accountId] as const,
   activity: (accountId: string, limit?: number) =>
     ["accounts", "activity", accountId, limit ?? null] as const,
+  /**
+   * The prefix every `activity` key starts with, for invalidation.
+   *
+   * `activity()` always appends a limit slot, so `activity(id)` is the key for
+   * the *unlimited* query, not a parent of the limited ones. Invalidating with
+   * it would quietly miss a cached `[..., id, 10]` the day a caller passes a
+   * limit. React Query matches on prefix, so invalidate on this instead.
+   */
+  activityRoot: (accountId: string) => ["accounts", "activity", accountId] as const,
 };
 
 const API_BASE_PATH = "/api/v1";

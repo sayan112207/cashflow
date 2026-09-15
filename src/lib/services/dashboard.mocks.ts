@@ -56,9 +56,10 @@ export const summaryFixture: DashboardSummary = {
     overdue_share_pct: 56.0,
     // DECISION: 63, overriding the older dashboard-spec / contract 128.
     open_invoice_count: 63,
-    // DECISION: 2, overriding the older dashboard-spec / contract 6. Note this
-    // now disagrees with `attention.accounts_without_p0` below — see the
-    // service notes; both feed UI that links to the same place.
+    // DECISION: 2, overriding the older dashboard-spec / contract 6. Counted
+    // from the accounts fixtures, where two of the twelve listed accounts
+    // resolve to `no_p0`. `attention.accounts_without_p0` is the same condition
+    // and links to the same filtered list, so it carries the same number.
     missing_contact_account_count: 2,
   },
   aging: [
@@ -69,7 +70,9 @@ export const summaryFixture: DashboardSummary = {
     { bucket: "90+", amount: "300000.00", share_pct: 6.0 },
   ],
   attention: {
-    accounts_without_p0: 6,
+    // Same condition and same destination as `missing_contact_account_count`
+    // above. Two fields disagreeing about one count is a bug on screen.
+    accounts_without_p0: 2,
     disputes_open: 1,
     // DECISION: the third attention item is broken promises, not payments
     // awaiting triage — Payments does not exist in this build.
@@ -125,7 +128,7 @@ export const chaseQueueFixture: ChaseQueue = {
       amount_outstanding: "95000.00",
       days_overdue: 12,
       priority_band: "Chase now",
-      priority_reason: "Crosses the 45-day mark tomorrow",
+      priority_reason: "No reminder sent yet, 12 days",
     },
     {
       invoice_id: INVOICE_IDS.inv1402,

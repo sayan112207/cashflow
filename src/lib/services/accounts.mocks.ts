@@ -13,6 +13,7 @@ import type {
   UpdateEscalationBody,
   UpdateSettingsBody,
 } from "@/lib/schemas/accounts";
+import { dncReasonIsPresent } from "@/lib/schemas/accounts";
 
 /**
  * Fixture data for `VITE_USE_MOCKS=true`, figures from `docs/accounts-spec.md`.
@@ -868,7 +869,10 @@ export function getMockAccountActivity(
 }
 
 function bumpUpdatedAt(): string {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00");
+  // Milliseconds are kept deliberately. This value is the If-Match token, and
+  // truncating to whole seconds leaves a stale token valid for up to a second,
+  // which makes the stale_write path untestable in mock mode.
+  return new Date().toISOString().replace(/Z$/, "+00:00");
 }
 
 /** Usable P0 = tier P0 and not DNC. Bounced still counts — replace before remove. */
@@ -977,6 +981,14 @@ export function mockUpdateContact(
     );
   }
 
+  const merged = { ...contact, ...body };
+  if (!dncReasonIsPresent(merged)) {
+    throw new MockAccountsConflictError(
+      "dnc_reason_required",
+      "Add a reason before marking a contact do-not-contact.",
+    );
+  }
+
   Object.assign(contact, body, { updated_at: bumpUpdatedAt() });
   contacts.updated_at = contact.updated_at;
   appendActivity(accountId, "contact_edited", `${contact.name} updated.`, contactId);
@@ -1036,6 +1048,11 @@ export function mockUpdateEscalation(
   contacts.p1_after_days = body.p1_after_days;
   contacts.p2_after_days = body.p2_after_days;
   contacts.updated_at = bumpUpdatedAt();
+  appendActivity(
+    accountId,
+    "escalation_changed",
+    `Escalation timing changed to P1 after ${body.p1_after_days} days, P2 after ${body.p2_after_days} days.`,
+  );
   return structuredClone(contacts);
 }
 
@@ -1075,6 +1092,7 @@ export function mockUpdateSettings(
       body.owner_user_id === USER_IDS.priya ? "Priya Nair" : detail.settings.owner_name;
   }
   detail.updated_at = bumpUpdatedAt();
+  appendActivity(accountId, "settings_changed", "Account settings updated.");
   return structuredClone(detail);
 }
 
@@ -1095,6 +1113,15 @@ export function mockPauseAccount(
   }
   if (!body.reason.trim()) {
     throw new MockAccountsConflictError("pause_reason_required", "Add a reason before pausing.");
+  }
+  // Contract §2.4. Compared as a plain date string rather than through Date:
+  // paused_until is a calendar date in the org timezone, and parsing it to an
+  // instant would make the boundary depend on where the code runs.
+  if (body.until !== undefined && body.until < new Date().toISOString().slice(0, 10)) {
+    throw new MockAccountsConflictError(
+      "pause_until_past",
+      "Pick a date in the future, or leave it blank to pause indefinitely.",
+    );
   }
   const now = bumpUpdatedAt();
   detail.settings.paused_at = now;

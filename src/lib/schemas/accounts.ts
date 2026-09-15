@@ -17,8 +17,21 @@ const percentage = z.number().min(0).max(100);
 
 const isoDatetime = z.string().datetime({ offset: true });
 
-/** Plain calendar date — org timezone, no time component. */
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
+/**
+ * Plain calendar date — org timezone, no time component.
+ *
+ * The shape check alone is not enough: `2026-02-30` matches the pattern, and
+ * `new Date("2026-02-30")` rolls it forward to 2 March rather than rejecting
+ * it. A date that silently becomes a different date is worse than one that
+ * fails, so the round-trip below is what actually decides validity.
+ */
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }, "Date must be a real calendar date");
 
 export const contactPipSchema = z.enum(["present", "missing", "bounced", "dnc"]);
 
@@ -53,6 +66,8 @@ export const activityKindSchema = z.enum([
   "contact_added",
   "contact_edited",
   "contact_removed",
+  "escalation_changed",
+  "settings_changed",
   "bounce",
   "pause",
   "resume",
@@ -288,7 +303,7 @@ export const accountActivitySchema = z.object({
 
 /** Mutation request bodies */
 
-export const createContactBodySchema = z.object({
+const contactBodyShape = z.object({
   tier: contactTierSchema,
   name: z.string().min(1),
   designation: z.string().nullable().optional(),
@@ -303,12 +318,42 @@ export const createContactBodySchema = z.object({
   language: contactLanguageSchema.optional(),
 });
 
-export const updateContactBodySchema = createContactBodySchema.partial();
+/**
+ * Spec §Contacts: the `Do not contact` toggle carries a required reason.
+ *
+ * Applied to the create body only. A PATCH may send `do_not_contact` without
+ * `dnc_reason` because the reason may already be stored, so the merged state is
+ * what has to be checked — `mockUpdateContact` does that after the merge.
+ */
+export function dncReasonIsPresent(value: {
+  do_not_contact?: boolean | undefined;
+  dnc_reason?: string | null | undefined;
+}): boolean {
+  return !value.do_not_contact || (value.dnc_reason ?? "").trim().length > 0;
+}
 
-export const updateEscalationBodySchema = z.object({
-  p1_after_days: z.number().int().positive(),
-  p2_after_days: z.number().int().positive(),
+export const createContactBodySchema = contactBodyShape.refine(dncReasonIsPresent, {
+  message: "Add a reason before marking a contact do-not-contact.",
+  path: ["dnc_reason"],
 });
+
+export const updateContactBodySchema = contactBodyShape.partial();
+
+/**
+ * Contract §1: `p2_after_days > p1_after_days` is a database check constraint,
+ * and §Errors maps a violation to `escalation_order` (422). Refusing it here
+ * too means the form never has to round-trip to learn the answer; the database
+ * stays the authority because the form is not the only writer.
+ */
+export const updateEscalationBodySchema = z
+  .object({
+    p1_after_days: z.number().int().positive(),
+    p2_after_days: z.number().int().positive(),
+  })
+  .refine((value) => value.p2_after_days > value.p1_after_days, {
+    message: "P2 must come after P1.",
+    path: ["p2_after_days"],
+  });
 
 export const updateSettingsBodySchema = z.object({
   default_credit_days: z.number().int().positive().optional(),
@@ -325,10 +370,13 @@ export const updateSettingsBodySchema = z.object({
  */
 export const accountSettingsFormSchema = z
   .object({
-    default_credit_days: z.number().int().positive(),
+    default_credit_days: z
+      .number({ invalid_type_error: "Enter the number of days." })
+      .int()
+      .positive(),
     currency: z.literal("INR"),
+    tds_rate: z.number({ invalid_type_error: "Enter a rate, or 0 for none." }).min(0).max(100),
     tds_section: tdsSectionSchema,
-    tds_rate: z.number().min(0).max(100),
     paused: z.boolean(),
     pause_reason: z.string(),
     paused_until: z.string(),

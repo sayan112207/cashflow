@@ -399,11 +399,14 @@ function AccountsBody({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <AppButton variant="primary">Upload a file</AppButton>
+          {/* Import is not in this build. The one control here that leads
+              somewhere is the manual path, so it is the only live one. */}
+          <AppButton variant="primary" disabled title="File import is not in this build yet.">
+            Upload a file
+          </AppButton>
           <AppButton variant="secondary" onClick={onAddEntries}>
             Add entries manually
           </AppButton>
-          <AppButton variant="text">How do I export from Tally?</AppButton>
         </div>
       </div>
     );

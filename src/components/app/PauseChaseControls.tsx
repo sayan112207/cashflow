@@ -30,6 +30,18 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
 
   const isPaused = detail.settings.paused_at !== null;
 
+  // `isPaused` reads the optimistic copy, so a pending pause flips this branch
+  // to Resume immediately — and both actions carry the same `detail.updated_at`
+  // as If-Match. Firing the second before the first settles sends a token the
+  // backend has already superseded, which comes back `stale_write` and rolls
+  // the optimistic update back. Neither action is offered while either is in
+  // flight.
+  const mutating = pauseMutation.isPending || resumeMutation.isPending;
+
+  // The date the new pause would start from; the contract rejects a
+  // `paused_until` before today, so the picker should not offer one.
+  const today = new Date().toISOString().slice(0, 10);
+
   function openPauseDialog() {
     setReason(detail.settings.pause_reason ?? "");
     setUntil(detail.settings.paused_until ?? "");
@@ -63,6 +75,7 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
       <AppButton
         variant="secondary"
         loading={resumeMutation.isPending}
+        disabled={mutating}
         onClick={() => {
           resumeMutation.mutate(
             { ifMatch: detail.updated_at },
@@ -77,7 +90,7 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
 
   return (
     <>
-      <AppButton variant="secondary" onClick={openPauseDialog}>
+      <AppButton variant="secondary" disabled={mutating} onClick={openPauseDialog}>
         Pause chasing
       </AppButton>
 
@@ -105,6 +118,7 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
               Until (optional)
               <input
                 type="date"
+                min={today}
                 value={until}
                 onChange={(event) => setUntil(event.target.value)}
                 className="mt-1 w-full rounded-input border border-stroke bg-card px-3 py-2 text-body font-semibold text-fg"
@@ -119,7 +133,7 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
             <AppButton
               variant="primary"
               loading={pauseMutation.isPending}
-              disabled={reason.trim().length === 0}
+              disabled={reason.trim().length === 0 || mutating}
               onClick={confirmPause}
             >
               Pause chasing
