@@ -12,6 +12,9 @@ import { getAuthContext } from "@/lib/services/auth.service";
  *
  * `beforeLoad` returns the resolved identity into route context, so children
  * read `user`/`orgs` without re-fetching or re-checking for null.
+ *
+ * Child pages render into `<Outlet />` inside AppShell — without it,
+ * `/app/accounts` would match but paint nothing.
  */
 export const Route = createFileRoute("/app")({
   beforeLoad: async () => {

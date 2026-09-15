@@ -160,7 +160,7 @@ function TileRow({ summary }: { summary: DashboardSummary | null }) {
       />
       <MetricTile
         to="/app/accounts"
-        search={{ filter: "missing-contact" }}
+        search={{ filter: "missing_contacts" }}
         eyebrow="Missing contacts"
         value={dash ? "—" : String(summary.tiles.missing_contact_account_count)}
         subline={dash ? "\u00a0" : "accounts can't be chased"}
@@ -176,7 +176,7 @@ function AttentionRow({ summary }: { summary: DashboardSummary }) {
       <div className="grid grid-cols-3 gap-4">
         <MetricTile
           to="/app/accounts"
-          search={{ filter: "missing-contact" }}
+          search={{ filter: "missing_contacts" }}
           value={String(summary.attention.accounts_without_p0)}
           subline="accounts with no P0 contact"
         />

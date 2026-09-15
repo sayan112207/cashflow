@@ -24,6 +24,8 @@ import { Route as AppPaymentsRouteImport } from './routes/app/payments'
 import { Route as AppReportsRouteImport } from './routes/app/reports'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AppAccountsIndexRouteImport } from './routes/app/accounts.index'
+import { Route as AppAccountsAccountIdRouteImport } from './routes/app/accounts.$accountId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -100,6 +102,16 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAccountsIndexRoute = AppAccountsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAccountsRoute,
+} as any)
+const AppAccountsAccountIdRoute = AppAccountsAccountIdRouteImport.update({
+  id: '/$accountId',
+  path: '/$accountId',
+  getParentRoute: () => AppAccountsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -107,7 +119,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/app/accounts': typeof AppAccountsRoute
+  '/app/accounts': typeof AppAccountsRouteWithChildren
   '/app/add-entries': typeof AppAddEntriesRoute
   '/app/chasing': typeof AppChasingRoute
   '/app/dashboard': typeof AppDashboardRoute
@@ -117,13 +129,14 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
+  '/app/accounts/': typeof AppAccountsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/app/accounts': typeof AppAccountsRoute
   '/app/add-entries': typeof AppAddEntriesRoute
   '/app/chasing': typeof AppChasingRoute
   '/app/dashboard': typeof AppDashboardRoute
@@ -133,6 +146,8 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app': typeof AppIndexRoute
+  '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
+  '/app/accounts': typeof AppAccountsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -141,7 +156,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/app/accounts': typeof AppAccountsRoute
+  '/app/accounts': typeof AppAccountsRouteWithChildren
   '/app/add-entries': typeof AppAddEntriesRoute
   '/app/chasing': typeof AppChasingRoute
   '/app/dashboard': typeof AppDashboardRoute
@@ -151,6 +166,8 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
+  '/app/accounts/': typeof AppAccountsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,13 +187,14 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/app/accounts/$accountId'
+    | '/app/accounts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/onboarding'
     | '/signup'
-    | '/app/accounts'
     | '/app/add-entries'
     | '/app/chasing'
     | '/app/dashboard'
@@ -186,6 +204,8 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app'
+    | '/app/accounts/$accountId'
+    | '/app/accounts'
   id:
     | '__root__'
     | '/'
@@ -203,6 +223,8 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/app/accounts/$accountId'
+    | '/app/accounts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -321,11 +343,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/accounts/': {
+      id: '/app/accounts/'
+      path: '/'
+      fullPath: '/app/accounts/'
+      preLoaderRoute: typeof AppAccountsIndexRouteImport
+      parentRoute: typeof AppAccountsRoute
+    }
+    '/app/accounts/$accountId': {
+      id: '/app/accounts/$accountId'
+      path: '/$accountId'
+      fullPath: '/app/accounts/$accountId'
+      preLoaderRoute: typeof AppAccountsAccountIdRouteImport
+      parentRoute: typeof AppAccountsRoute
+    }
   }
 }
 
+interface AppAccountsRouteChildren {
+  AppAccountsAccountIdRoute: typeof AppAccountsAccountIdRoute
+  AppAccountsIndexRoute: typeof AppAccountsIndexRoute
+}
+
+const AppAccountsRouteChildren: AppAccountsRouteChildren = {
+  AppAccountsAccountIdRoute: AppAccountsAccountIdRoute,
+  AppAccountsIndexRoute: AppAccountsIndexRoute,
+}
+
+const AppAccountsRouteWithChildren = AppAccountsRoute._addFileChildren(
+  AppAccountsRouteChildren,
+)
+
 interface AppRouteChildren {
-  AppAccountsRoute: typeof AppAccountsRoute
+  AppAccountsRoute: typeof AppAccountsRouteWithChildren
   AppAddEntriesRoute: typeof AppAddEntriesRoute
   AppChasingRoute: typeof AppChasingRoute
   AppDashboardRoute: typeof AppDashboardRoute
@@ -337,7 +387,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAccountsRoute: AppAccountsRoute,
+  AppAccountsRoute: AppAccountsRouteWithChildren,
   AppAddEntriesRoute: AppAddEntriesRoute,
   AppChasingRoute: AppChasingRoute,
   AppDashboardRoute: AppDashboardRoute,
