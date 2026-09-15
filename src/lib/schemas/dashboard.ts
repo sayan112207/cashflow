@@ -41,6 +41,15 @@ export const agingSegmentSchema = z.object({
   share_pct: percentage,
 });
 
+/** Contract order, left to right. The bar renders this array as-is. */
+function agingSlot<B extends z.infer<typeof agingBucketSchema>>(bucket: B) {
+  return z.object({
+    bucket: z.literal(bucket),
+    amount: moneyString,
+    share_pct: percentage,
+  });
+}
+
 /** `GET /api/v1/dashboard/summary` */
 export const dashboardSummarySchema = z.object({
   as_of: z.string().datetime({ offset: true }),
@@ -54,11 +63,18 @@ export const dashboardSummarySchema = z.object({
     missing_contact_account_count: z.number().int().nonnegative(),
   }),
   /**
-   * Fixed length: the contract freezes the order to match the bucket enum, and
-   * the frontend renders in array order without sorting. A short array would
-   * silently drop a segment from a bar that is supposed to total the book.
+   * A tuple, not an array of length 5: the contract freezes both membership
+   * and left-to-right order, and the frontend renders this as-is. A plain
+   * `.length(5)` would accept a shuffled or duplicated set and the bar would
+   * paint the wrong colours on the wrong amounts.
    */
-  aging: z.array(agingSegmentSchema).length(5),
+  aging: z.tuple([
+    agingSlot("Not yet due"),
+    agingSlot("1–30"),
+    agingSlot("31–60"),
+    agingSlot("61–90"),
+    agingSlot("90+"),
+  ]),
   attention: z.object({
     accounts_without_p0: z.number().int().nonnegative(),
     disputes_open: z.number().int().nonnegative(),
