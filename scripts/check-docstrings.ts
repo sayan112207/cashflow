@@ -17,6 +17,8 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+import ts from "typescript";
+
 /** Matches the threshold pinned in `.coderabbit.yaml`; change both together. */
 const THRESHOLD = 80;
 
@@ -67,7 +69,15 @@ function changedLines(base: string): Map<string, Set<number>> {
     const start = Number(hunk[1]);
     const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
     const set = out.get(file) ?? new Set<number>();
-    for (let n = start; n < start + count; n++) set.add(n);
+    if (count === 0) {
+      // A deletion-only hunk reads `+n,0`: nothing was added, and the removed
+      // lines sat immediately after line n in the new file. Without this the
+      // hunk records nothing, so a change that only deletes code from inside a
+      // function leaves that function looking untouched.
+      set.add(Math.max(start, 1));
+    } else {
+      for (let n = start; n < start + count; n++) set.add(n);
+    }
     out.set(file, set);
   }
   return out;
@@ -75,54 +85,62 @@ function changedLines(base: string): Map<string, Set<number>> {
 
 type Fn = { name: string; line: number; endLine: number; documented: boolean };
 
-const DECL =
-  /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+([A-Za-z_]\w*)|^(?:export\s+)?const\s+([A-Za-z_]\w*)\s*(?::[^=]+)?=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_]\w*)\s*(?::[^=]+)?=>/;
-
 /**
  * Top-level functions in a file, with the span each one covers.
  *
- * Deliberately a line scanner rather than a real parse: the gate needs to agree
- * with a reviewer reading the diff, and a brace-counted span does that for the
- * declaration styles this codebase uses. Anything it cannot resolve is skipped
- * rather than guessed at, so the check never invents a failure.
+ * Uses the TypeScript parser rather than a line scanner. A scanner that finds a
+ * function's end by counting braces cannot terminate on a concise arrow body —
+ * `const f = (x) => x * 2;` opens no brace — so it ran to the end of the file
+ * and swallowed every declaration below it, marking them touched by any edit.
+ * The compiler computes exact spans and is already a dependency here.
  */
 function functionsIn(path: string): Fn[] {
-  const lines = readFileSync(path, "utf8").split("\n");
+  const text = readFileSync(path, "utf8");
+  const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
   const fns: Fn[] = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i] ?? "";
-    const match = DECL.exec(raw);
-    if (!match) continue;
-    const name = match[1] ?? match[2];
-    if (name === undefined) continue;
+  const lineOf = (pos: number) => source.getLineAndCharacterOfPosition(pos).line + 1;
 
-    // Walk braces from the declaration to find where the function ends.
-    let depth = 0;
-    let end = i;
-    let opened = false;
-    for (let j = i; j < lines.length; j++) {
-      for (const ch of lines[j] ?? "") {
-        if (ch === "{") {
-          depth++;
-          opened = true;
-        } else if (ch === "}") depth--;
-      }
-      if (opened && depth <= 0) {
-        end = j;
-        break;
-      }
-      end = j;
+  /**
+   * Whether a JSDoc block sits immediately above the declaration.
+   *
+   * Tests the opening delimiter, not the closing one. Every block comment ends
+   * the same way, so matching the end counted an incidental `eslint-disable`
+   * block — or any other plain block comment — as documentation.
+   */
+  function isDocumented(node: ts.Node): boolean {
+    const ranges = ts.getLeadingCommentRanges(text, node.getFullStart()) ?? [];
+    const last = ranges.at(-1);
+    if (last === undefined) return false;
+    return text.slice(last.pos, last.pos + 3) === "/**";
+  }
+
+  function record(name: string, node: ts.Node): void {
+    fns.push({
+      name,
+      line: lineOf(node.getStart(source)),
+      endLine: lineOf(node.getEnd()),
+      documented: isDocumented(node),
+    });
+  }
+
+  for (const statement of source.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name) {
+      record(statement.name.text, statement);
+      continue;
     }
-
-    // A docstring is the block comment immediately above, allowing only blank
-    // lines between. A `//` comment is a note to the next reader, not an API
-    // description, and does not count — which is also how CodeRabbit reads it.
-    let k = i - 1;
-    while (k >= 0 && (lines[k] ?? "").trim() === "") k--;
-    const documented = (lines[k] ?? "").trim().endsWith("*/");
-
-    fns.push({ name, line: i + 1, endLine: end + 1, documented });
+    if (!ts.isVariableStatement(statement)) continue;
+    const declarations = statement.declarationList.declarations;
+    for (const decl of declarations) {
+      const init = decl.initializer;
+      if (init === undefined) continue;
+      if (!ts.isArrowFunction(init) && !ts.isFunctionExpression(init)) continue;
+      if (!ts.isIdentifier(decl.name)) continue;
+      // The docstring attaches to the statement, so a lone declaration is
+      // measured from there. `const a = …, b = …` is one statement holding two
+      // functions, and each then gets its own span.
+      record(decl.name.text, declarations.length === 1 ? statement : decl);
+    }
   }
   return fns;
 }
@@ -143,11 +161,19 @@ if (touched.length === 0) {
 }
 
 const undocumented = touched.filter((t) => !t.fn.documented);
-const coverage = Math.round(((touched.length - undocumented.length) / touched.length) * 100);
+const documented = touched.length - undocumented.length;
+
+/**
+ * Compared as integers so the gate cannot be cleared by rounding: 43 of 54 is
+ * 79.6%, which `Math.round` reports as 80 and would have passed an 80% bar.
+ * The rounded figure below is for reading only.
+ */
+const meetsThreshold = documented * 100 >= THRESHOLD * touched.length;
+const coverage = Math.round((documented / touched.length) * 100);
 
 console.log(
   `Docstring coverage on touched functions: ${coverage}% ` +
-    `(${touched.length - undocumented.length}/${touched.length}, threshold ${THRESHOLD}%)`,
+    `(${documented}/${touched.length}, threshold ${THRESHOLD}%)`,
 );
 
 if (undocumented.length > 0) {
@@ -155,7 +181,7 @@ if (undocumented.length > 0) {
   for (const { path, fn } of undocumented) console.log(`  ${path}:${fn.line}  ${fn.name}`);
 }
 
-if (coverage < THRESHOLD) {
+if (!meetsThreshold) {
   // `::error::` renders the failure on the PR's Files tab, not only in the log.
   console.log(
     `\n::error::Docstring coverage ${coverage}% is below the ${THRESHOLD}% threshold. ` +
