@@ -4,6 +4,7 @@ import { AppButton } from "@/components/app/AppButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePauseAccount, useResumeAccount } from "@/lib/queries/account-detail";
 import { pauseReasonSchema, type AccountDetail, type PauseReason } from "@/lib/schemas/accounts";
+import { AccountsApiError } from "@/lib/services/accounts";
 
 type PauseChaseControlsProps = {
   accountId: string;
@@ -128,7 +129,9 @@ export function PauseChaseControls({ accountId, detail }: PauseChaseControlsProp
 
         {pauseMutation.error ? (
           <p role="alert" className="mt-3 text-prose font-normal text-danger">
-            {pauseMutation.error.message}
+            {pauseMutation.error instanceof AccountsApiError
+              ? pauseMutation.error.message
+              : "Couldn't pause chasing."}
           </p>
         ) : null}
 

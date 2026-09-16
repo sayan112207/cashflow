@@ -124,9 +124,14 @@ async function requestJson(path: string, init: RequestInit): Promise<unknown> {
     if (parsed.success) {
       throw new AccountsApiError(parsed.data.error.code, parsed.data.error.message);
     }
-    throw new Error(
+    // No envelope means the API broke its own contract. This message is for the
+    // developer reading the console — no screen renders it, so an unlogged throw
+    // would lose the status and path that explain the failure.
+    const contractError = new Error(
       `${path} failed with ${response.status} and no error envelope. Check the API contract.`,
     );
+    console.error(contractError);
+    throw contractError;
   }
 
   return body;

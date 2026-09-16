@@ -20,6 +20,7 @@ import type {
   TdsSection,
   Weekday,
 } from "@/lib/schemas/accounts";
+import { AccountsApiError } from "@/lib/services/accounts";
 
 type Props = {
   accountId: string;
@@ -674,7 +675,9 @@ export function AccountSettingsPanel({ accountId, detail }: Props) {
 
           {save.error ? (
             <p role="alert" className="text-prose font-normal text-danger">
-              {save.error.message}
+              {save.error instanceof AccountsApiError
+                ? save.error.message
+                : "Couldn't save settings."}
             </p>
           ) : null}
 
@@ -914,7 +917,9 @@ function ArchiveDialog({
 
         {archive.error ? (
           <p role="alert" className="mt-2 text-prose font-normal text-danger">
-            {archive.error.message}
+            {archive.error instanceof AccountsApiError
+              ? archive.error.message
+              : "Couldn't archive this account."}
           </p>
         ) : null}
 
