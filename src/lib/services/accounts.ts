@@ -115,6 +115,18 @@ function toAccountsApiError(error: unknown): never {
   throw error;
 }
 
+/**
+ * Performs the request and hands back the decoded body, or throws.
+ *
+ * Returns `unknown` on purpose — the caller must run it through a schema. A
+ * generic that returned `T` here would let a caller skip validation and still
+ * typecheck, which is the failure this module is built to prevent.
+ *
+ * Throws `AccountsApiError` when the failure arrived in the contract's error
+ * envelope and a plain `Error` when it did not. Screens render the first
+ * verbatim and fall back to their own copy for the second, so the two cases
+ * must stay distinguishable by type.
+ */
 async function requestJson(path: string, init: RequestInit): Promise<unknown> {
   const response = await fetch(`${API_BASE_PATH}${path}`, init);
   const body: unknown = await response.json().catch(() => undefined);
@@ -124,9 +136,14 @@ async function requestJson(path: string, init: RequestInit): Promise<unknown> {
     if (parsed.success) {
       throw new AccountsApiError(parsed.data.error.code, parsed.data.error.message);
     }
-    throw new Error(
+    // No envelope means the API broke its own contract. This message is for the
+    // developer reading the console — no screen renders it, so an unlogged throw
+    // would lose the status and path that explain the failure.
+    const contractError = new Error(
       `${path} failed with ${response.status} and no error envelope. Check the API contract.`,
     );
+    console.error(contractError);
+    throw contractError;
   }
 
   return body;

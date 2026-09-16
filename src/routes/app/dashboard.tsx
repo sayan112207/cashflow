@@ -55,10 +55,17 @@ function isAllAged(summary: DashboardSummary): boolean {
   return summary.aging.every((segment) => segment.bucket === "90+" || isZeroMoney(segment.amount));
 }
 
-function userFacingMessage(error: unknown): string {
-  if (error instanceof DashboardApiError) return error.message;
-  if (error instanceof Error && error.message.length > 0) return error.message;
-  return "";
+/**
+ * The copy to show a person for a failed request.
+ *
+ * Only a `DashboardApiError` carries a message the backend wrote for a user;
+ * the contract says to render that verbatim. Every other error — a dropped
+ * connection, a schema mismatch, a 5xx that skipped the error envelope — has a
+ * message written for whoever is reading the console, so the caller's own copy
+ * is shown instead. The service logs the detail before it throws.
+ */
+function userFacingMessage(error: unknown, fallback: string): string {
+  return error instanceof DashboardApiError ? error.message : fallback;
 }
 
 function DashboardPage() {
@@ -102,7 +109,7 @@ function DashboardPage() {
         <>
           <div className="mb-4 flex items-center gap-3">
             <p role="alert" className="text-body font-semibold text-fg">
-              Couldn't load your totals.
+              {userFacingMessage(summaryQuery.error, "Couldn't load your totals.")}
             </p>
             <AppButton variant="secondary" onClick={() => void summaryQuery.refetch()}>
               Retry
@@ -338,7 +345,7 @@ function ChaseNowSection({
       ) : error !== undefined ? (
         <div className="flex items-center gap-3">
           <p role="alert" className="text-body font-semibold text-fg">
-            {userFacingMessage(error) || "Couldn't load the chase queue."}
+            {userFacingMessage(error, "Couldn't load the chase queue.")}
           </p>
           <AppButton variant="secondary" onClick={onRetry}>
             Retry
@@ -439,8 +446,12 @@ function ChaseTable({ items }: { items: readonly ChaseQueueItem[] }) {
       }
       toast(`${result.queued} queued. Skipped ${skippedLabel(result.skipped, items)}.`);
     },
-    onError: (error) => {
-      if (error instanceof DashboardApiError) toast(error.message);
+    onError: (error, invoiceIds) => {
+      // Every failure gets a toast, not just the ones that arrived in the error
+      // envelope: without this the button spins, stops, and nothing changes.
+      const fallback =
+        invoiceIds.length === 1 ? "Couldn't queue that chase." : "Couldn't queue those chases.";
+      toast(userFacingMessage(error, fallback));
     },
   });
 
