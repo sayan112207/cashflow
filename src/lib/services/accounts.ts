@@ -115,6 +115,18 @@ function toAccountsApiError(error: unknown): never {
   throw error;
 }
 
+/**
+ * Performs the request and hands back the decoded body, or throws.
+ *
+ * Returns `unknown` on purpose — the caller must run it through a schema. A
+ * generic that returned `T` here would let a caller skip validation and still
+ * typecheck, which is the failure this module is built to prevent.
+ *
+ * Throws `AccountsApiError` when the failure arrived in the contract's error
+ * envelope and a plain `Error` when it did not. Screens render the first
+ * verbatim and fall back to their own copy for the second, so the two cases
+ * must stay distinguishable by type.
+ */
 async function requestJson(path: string, init: RequestInit): Promise<unknown> {
   const response = await fetch(`${API_BASE_PATH}${path}`, init);
   const body: unknown = await response.json().catch(() => undefined);
