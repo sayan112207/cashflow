@@ -103,11 +103,15 @@ async function requestJson(path: string, init: RequestInit): Promise<unknown> {
       throw new DashboardApiError(parsed.data.error.code, parsed.data.error.message);
     }
     // No envelope means the API broke its own contract. There is no backend
-    // copy to show, so this message is for the developer reading the console —
-    // the UI should fall back to its own generic error state here.
-    throw new Error(
+    // copy to show, so this message is for the developer reading the console and
+    // the UI falls back to its own generic error state. Logged here rather than
+    // left to the caller: the screens deliberately never render this string, so
+    // an unlogged throw would lose the status and path that explain the failure.
+    const contractError = new Error(
       `${path} failed with ${response.status} and no error envelope. Check the API contract.`,
     );
+    console.error(contractError);
+    throw contractError;
   }
 
   return body;
