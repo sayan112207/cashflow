@@ -1,0 +1,59 @@
+# Every gate that has to pass before a change reaches `develop`, and every gate
+# that has to pass again before `develop` reaches `main`.
+#
+# These are the same four commands a developer runs locally. Keeping them
+# identical is deliberate: a check that only exists in CI is one nobody can
+# reproduce when it fails.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  # Also on push, so the branch itself carries a status — a PR from `develop` to
+  # `main` shows a green tick earned by the merge commit, not only by the PRs
+  # that fed into it.
+  push:
+    branches: [develop, main]
+
+# A new push to a PR makes the previous run irrelevant. Cancel it rather than
+# pay for it, but never cancel a run on `develop` or `main` themselves: those
+# statuses are what the release PR reads.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: typecheck · lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # --frozen-lockfile so CI fails on a lockfile that drifted from
+      # package.json instead of quietly resolving something else.
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Test
+        run: bun test
+
+      # The build is a real gate, not a formality: it is the only step that
+      # exercises SSR bundling, and it needs no env vars — the app validates
+      # its environment at first use, not at build time.
+      - name: Build
+        run: bun run build
