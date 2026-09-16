@@ -182,7 +182,7 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Changes sync back into Lovable from whichever branch the project is connected to — point that at `develop` (Lovable project → GitHub settings) so editor changes pass the same gates as everything else.
+- **Full ownership**: this code is yours. Changes sync back into Lovable from whichever branch the project is connected to — point that at `develop` (Lovable project → GitHub settings) so editor changes land where the rest of the work is integrated. An editor change arrives as a push, so it runs the four push gates; `docstrings` runs on pull requests only.
 
 ## Development
 
@@ -200,16 +200,19 @@ bun run dev
 
 ### Gates
 
-Four commands. CI runs exactly these, so a failure here is a failure there —
-that is the point of keeping the two lists identical.
-
 ```sh
-bun run typecheck   # tsc --noEmit. No `any`, no type errors — see docs/project-conventions.md
-bun run lint        # eslint
+bun run typecheck   # tsc --noEmit — type errors only
+bun run lint        # eslint, incl. no-explicit-any as an error — see docs/project-conventions.md
 bun test            # fixture invariants, e.g. aging buckets summing to total_outstanding
 bun run build       # the only gate that exercises SSR bundling
 bun run docstrings  # docstring coverage on the functions this change touches
 ```
+
+CI does not run all five on every event. A **push** to `develop` or `main` runs
+the first four. A **pull request** runs those four and `docstrings`, which needs
+a base branch to diff against and so has nothing to measure on a bare push.
+
+Run all five before opening a PR.
 
 ### Docstrings
 
@@ -236,11 +239,23 @@ Two long-lived branches:
 | `develop` | Default branch. Integration — every change lands and is tested here first. | Feature and fix PRs             |
 | `main`    | Release branch. What has been tested together and shipped.                 | Nothing but a PR from `develop` |
 
-`main` accepting nothing but `develop` is enforced, not merely documented: the
-`source branch` CI job fails any pull request into `main` from another branch,
-and it is a required check. GitHub has no native rule for a pull request's
-_source_ — branch protection governs who may push and what must pass, not where
-a change came from — so it lives in the workflow.
+GitHub has no native rule for a pull request's _source_ — branch protection
+governs who may push and what must pass, not where a change came from — so the
+`source branch` CI job fails any pull request into `main` that did not come from
+`develop`.
+
+**The job only blocks a merge once it is a required check.** A workflow reports;
+branch protection is what enforces. On `main` that means, under Settings →
+Branches:
+
+- Require a pull request before merging, so nothing is pushed to `main` directly.
+- Require the `source branch` and `typecheck · lint · test · build` checks to pass.
+- Leave "require linear history" off — the release PR merges as a merge commit.
+- Leave "require branches to be up to date" off, or every release will first
+  demand a back-merge of `main` into `develop`.
+
+A fork or a fresh clone has none of this until someone sets it. It is configured
+on this repository.
 
 ### Day to day
 
@@ -251,7 +266,7 @@ git checkout develop && git pull
 git checkout -b fix/some-thing
 
 # work, then before opening the PR:
-bun run typecheck && bun run lint && bun test && bun run build
+bun run typecheck && bun run lint && bun test && bun run build && bun run docstrings
 
 git push -u origin fix/some-thing
 gh pr create --base develop
@@ -284,7 +299,9 @@ and it is also what keeps Lovable's project history intact.
   the editor on whatever is there. A broken commit is a broken editor.
 - **One branch per change.** `feat/…`, `fix/…`, `chore/…`, `docs/…`.
 - **Open a PR, do not merge locally.** `git merge` into `develop` from your
-  machine skips CI and the review.
+  machine skips the review, and skips `docstrings` with it. CI still runs — the
+  workflow triggers on pushes to `develop` — but it reports after the fact,
+  on a branch everyone has already pulled, rather than before the merge.
 
 ## CI
 
