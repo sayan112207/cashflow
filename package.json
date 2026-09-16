@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "docstrings": "bun scripts/check-docstrings.ts",
     "db:push": "bun scripts/db.ts push",
     "db:diff": "bun scripts/db.ts diff",
     "db:types": "bun scripts/db.ts types",
