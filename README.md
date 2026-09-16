@@ -208,7 +208,24 @@ bun run typecheck   # tsc --noEmit. No `any`, no type errors — see docs/projec
 bun run lint        # eslint
 bun test            # fixture invariants, e.g. aging buckets summing to total_outstanding
 bun run build       # the only gate that exercises SSR bundling
+bun run docstrings  # docstring coverage on the functions this change touches
 ```
+
+### Docstrings
+
+`bun run docstrings` requires 80% docstring coverage across the functions a
+change touches — not across the tree, which sits near 29% and would fail on
+~168 pre-existing functions. Touching a function is when its documentation is
+cheapest to write, and it is the only moment this gate asks for one.
+
+It mirrors CodeRabbit's "Docstring Coverage" pre-merge check, so the number is
+settled in a command you can run and debug rather than arriving as a review
+comment after the PR is already open. `.coderabbit.yaml` pins the bot to the
+same 80% as a non-blocking second opinion — two parsers occasionally disagree
+on what counts as a function, and CI is the copy that decides.
+
+A docstring is a `/** … */` block immediately above the declaration. A `//`
+comment is a note to the next reader and does not count.
 
 ## Branching and releases
 
@@ -218,6 +235,12 @@ Two long-lived branches:
 | --------- | -------------------------------------------------------------------------- | ------------------------------- |
 | `develop` | Default branch. Integration — every change lands and is tested here first. | Feature and fix PRs             |
 | `main`    | Release branch. What has been tested together and shipped.                 | Nothing but a PR from `develop` |
+
+`main` accepting nothing but `develop` is enforced, not merely documented: the
+`source branch` CI job fails any pull request into `main` from another branch,
+and it is a required check. GitHub has no native rule for a pull request's
+_source_ — branch protection governs who may push and what must pass, not where
+a change came from — so it lives in the workflow.
 
 ### Day to day
 
