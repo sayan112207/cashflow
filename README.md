@@ -182,15 +182,135 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- **Full ownership**: this code is yours. Changes sync back into Lovable from whichever branch the project is connected to — point that at `develop` (Lovable project → GitHub settings) so editor changes land where the rest of the work is integrated. An editor change arrives as a push, so it runs the four push gates; `docstrings` runs on pull requests only.
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Prefer working locally? You need [Bun](https://bun.sh). This repo installs, runs
+and tests with Bun — `bun.lock` is the committed lockfile, so npm and yarn will
+produce a tree CI does not check.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+git clone https://github.com/sayan112207/settle_swiftly.git
+cd settle_swiftly
+bun install
+cp .env.example .env   # fill in from your Supabase project dashboard
+bun run dev
 ```
+
+### Gates
+
+```sh
+bun run typecheck   # tsc --noEmit — type errors only
+bun run lint        # eslint, incl. no-explicit-any as an error — see docs/project-conventions.md
+bun test            # fixture invariants, e.g. aging buckets summing to total_outstanding
+bun run build       # the only gate that exercises SSR bundling
+bun run docstrings  # docstring coverage on the functions this change touches
+```
+
+CI does not run all five on every event. A **push** to `develop` or `main` runs
+the first four. A **pull request** runs those four and `docstrings`, which needs
+a base branch to diff against and so has nothing to measure on a bare push.
+
+Run all five before opening a PR.
+
+### Docstrings
+
+`bun run docstrings` requires 80% docstring coverage across the functions a
+change touches — not across the tree, which sits near 29% and would fail on
+~168 pre-existing functions. Touching a function is when its documentation is
+cheapest to write, and it is the only moment this gate asks for one.
+
+It mirrors CodeRabbit's "Docstring Coverage" pre-merge check, so the number is
+settled in a command you can run and debug rather than arriving as a review
+comment after the PR is already open. `.coderabbit.yaml` pins the bot to the
+same 80% as a non-blocking second opinion — two parsers occasionally disagree
+on what counts as a function, and CI is the copy that decides.
+
+A docstring is a `/** … */` block immediately above the declaration. A `//`
+comment is a note to the next reader and does not count.
+
+## Branching and releases
+
+Two long-lived branches:
+
+| Branch    | What it is                                                                 | What writes to it               |
+| --------- | -------------------------------------------------------------------------- | ------------------------------- |
+| `develop` | Default branch. Integration — every change lands and is tested here first. | Feature and fix PRs             |
+| `main`    | Release branch. What has been tested together and shipped.                 | Nothing but a PR from `develop` |
+
+GitHub has no native rule for a pull request's _source_ — branch protection
+governs who may push and what must pass, not where a change came from — so the
+`source branch` CI job fails any pull request into `main` that did not come from
+`develop`.
+
+**The job only blocks a merge once it is a required check.** A workflow reports;
+branch protection is what enforces. On `main` that means, under Settings →
+Branches:
+
+- Require a pull request before merging, so nothing is pushed to `main` directly.
+- Require the `source branch` and `typecheck · lint · test · build` checks to pass.
+- Leave "require linear history" off — the release PR merges as a merge commit.
+- Leave "require branches to be up to date" off, or every release will first
+  demand a back-merge of `main` into `develop`.
+
+A fork or a fresh clone has none of this until someone sets it. It is configured
+on this repository.
+
+### Day to day
+
+Branch from `develop`, never from `main`:
+
+```sh
+git checkout develop && git pull
+git checkout -b fix/some-thing
+
+# work, then before opening the PR:
+bun run typecheck && bun run lint && bun test && bun run build && bun run docstrings
+
+git push -u origin fix/some-thing
+gh pr create --base develop
+```
+
+`develop` is the default branch, so `gh pr create` and the GitHub UI target it
+already. Feature PRs may be squash-merged — that rewrites nothing on `develop`,
+it only appends.
+
+### Shipping to main
+
+When a batch on `develop` is ready:
+
+```sh
+gh pr create --base main --head develop --title "release: <what is in it>"
+```
+
+**Merge that PR with a merge commit — never squash, never rebase.** Squashing
+rewrites the batch into a single new commit on `main`, so `main` and `develop`
+stop sharing ancestry and every later release PR shows conflicts against changes
+that are already in both branches. A merge commit keeps the two histories joined,
+and it is also what keeps Lovable's project history intact.
+
+### Rules that are not optional
+
+- **Never rewrite published history.** No force-push, no rebase of anything
+  already pushed. Lovable replays this repo's history into the editor and the
+  project's history is lost when it is rewritten — see `AGENTS.md`.
+- **Keep `develop` working.** Lovable syncs from the connected branch and opens
+  the editor on whatever is there. A broken commit is a broken editor.
+- **One branch per change.** `feat/…`, `fix/…`, `chore/…`, `docs/…`.
+- **Open a PR, do not merge locally.** `git merge` into `develop` from your
+  machine skips the review, and skips `docstrings` with it. CI still runs — the
+  workflow triggers on pushes to `develop` — but it reports after the fact,
+  on a branch everyone has already pulled, rather than before the merge.
+
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs typecheck, lint,
+test and build on every PR into `develop` or `main`, and on every push to those
+two branches. The push trigger is what lets a `develop` → `main` PR show a
+status earned by the merge commit itself, rather than inferring it from the PRs
+that fed into it.
+
+Make the `verify` job a required status check on both branches (Settings →
+Branches → Add rule) so a red run blocks the merge instead of merely reporting
+it. Protection is free on public repositories.
