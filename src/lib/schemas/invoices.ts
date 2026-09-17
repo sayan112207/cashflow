@@ -24,10 +24,7 @@ function isValidCalendarDate(value: string): boolean {
 export const decimalMoneySchema = z
   .string()
   .regex(/^\d+(?:\.\d{1,2})?$/, "Enter an amount with up to two decimal places.")
-  .refine(
-    (value) => value !== "0" && value !== "0.0" && value !== "0.00",
-    "Amount must be positive.",
-  );
+  .refine((value) => Number(value) > 0, "Amount must be positive.");
 
 // Plain ZodObject — used as-is by both the single-draft schema below and, via
 // .superRefine, by the array-item schema in importInvoicesSchema. There is no

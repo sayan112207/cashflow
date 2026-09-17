@@ -88,7 +88,7 @@ function InvoicesPage() {
               {invoicesQuery.data.map((invoice) => (
                 <tr key={invoice.id} className="hover:bg-hovered">
                   <td className="border-b border-hairline px-3 py-3 text-body font-semibold text-fg">
-                    {accountNames.get(invoice.account_id) ?? "Account"}
+                    {accountNames.get(invoice.account_id) ?? invoice.account_id}
                   </td>
                   <td className="border-b border-hairline px-3 py-3 text-body text-fg">
                     {invoice.invoice_number}

@@ -40,8 +40,11 @@ describe("invoiceDraftSchema — calendar date validation", () => {
 describe("invoiceDraftSchema — due date ordering", () => {
   test("accepts due_date equal to issue_date", () => {
     expect(
-      invoiceDraftSchema.safeParse({ ...VALID_DRAFT, issue_date: "2026-08-01", due_date: "2026-08-01" })
-        .success,
+      invoiceDraftSchema.safeParse({
+        ...VALID_DRAFT,
+        issue_date: "2026-08-01",
+        due_date: "2026-08-01",
+      }).success,
     ).toBe(true);
   });
 

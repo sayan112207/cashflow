@@ -103,7 +103,7 @@ function AddEntriesPage() {
     setForm(EMPTY_FORM);
   }
   function addParsedRows(rows: ParsedInvoiceRow[]) {
-    if (rows.length > 500) {
+    if (drafts.length + rows.length > 500) {
       setParseError("This import has more than the 500-row limit.");
       return;
     }
