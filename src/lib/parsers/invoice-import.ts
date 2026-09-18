@@ -18,6 +18,14 @@ const HEADER_ALIASES: Record<keyof ParsedInvoiceRow, readonly string[]> = {
   external_ref: ["po", "po number", "purchase order"],
 };
 
+/**
+ * Parses a delimited invoice import (CSV upload or spreadsheet paste) into
+ * rows ready for draft validation. Accepts either `,` or `\t` as the
+ * delimiter, matches columns by header aliases regardless of order, and
+ * normalizes each cell's money and date formatting. Throws when the input
+ * has no header/data rows, a required column is missing, or a quoted value
+ * is left unclosed.
+ */
 export function parseDelimitedInvoices(input: string, delimiter: "," | "\t"): ParsedInvoiceRow[] {
   const rows = parseRows(input, delimiter).filter((row) => row.some((cell) => cell.trim() !== ""));
   if (rows.length < 2) throw new Error("Add a header row and at least one invoice.");
@@ -50,6 +58,12 @@ export function parseDelimitedInvoices(input: string, delimiter: "," | "\t"): Pa
   }));
 }
 
+/**
+ * Splits delimited text into rows of cells, honoring double-quoted values
+ * (including embedded delimiters, embedded newlines, and `""`-escaped
+ * quotes) and both `\n` and `\r\n` line endings. Throws if a quoted value is
+ * never closed.
+ */
 function parseRows(input: string, delimiter: string): string[][] {
   const rows: string[][] = [[]];
   let value = "";
@@ -76,18 +90,33 @@ function parseRows(input: string, delimiter: string): string[][] {
   return rows;
 }
 
+/** Lowercases, trims, and collapses whitespace in a header cell so it can be matched against `HEADER_ALIASES`. */
 function normalizeHeader(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
+/** Reads a row's cell by column index, trimmed, or `""` if the column is absent from this row. */
 function cell(row: string[], index: number) {
   return (row[index] ?? "").trim();
 }
 
+/**
+ * Strips `₹`, thousands separators, and surrounding whitespace from an
+ * imported amount cell. Returns the cleaned digits-and-decimal string only
+ * when it matches `decimalMoneySchema`; otherwise returns the original
+ * trimmed value unchanged so schema validation can report a clear error.
+ */
 export function normalizeMoney(value: string): string {
   const normalized = value.replace(/[₹,\s]/g, "");
   return decimalMoneySchema.safeParse(normalized).success ? normalized : value.trim();
 }
 
+/**
+ * Converts an imported date cell to `YYYY-MM-DD`. Passes an already-ISO
+ * value through unchanged, and reinterprets a `D/M/YYYY`- or
+ * `D-M-YYYY`-shaped value as day/month/year (this product's regional date
+ * format). Any other shape is returned unchanged so schema validation can
+ * report a clear error rather than this function guessing.
+ */
 function normalizeDate(value: string): string {
   const trimmed = value.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;

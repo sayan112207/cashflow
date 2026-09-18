@@ -25,6 +25,11 @@ export const Route = createFileRoute("/app/invoices")({
   component: InvoicesPage,
 });
 
+/**
+ * Invoices list screen. Loads this org's invoices and account names in
+ * parallel and renders loading, error (with retry), empty, and populated
+ * table states.
+ */
 function InvoicesPage() {
   const { orgs } = Route.useRouteContext();
   const orgId = orgs[0]!.id;

@@ -13,6 +13,12 @@ const dateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date.")
   .refine(isValidCalendarDate, "Enter a real calendar date.");
 
+/**
+ * Checks whether a `YYYY-MM-DD` string names a date that actually exists on
+ * the calendar. Round-trips the parts through `Date.UTC` and compares them
+ * back out, since an invalid date (e.g. Feb 31) silently rolls forward
+ * instead of throwing — a mismatch after the round trip is how we detect it.
+ */
 function isValidCalendarDate(value: string): boolean {
   const [year, month, day] = value.split("-").map(Number) as [number, number, number];
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -39,6 +45,13 @@ const invoiceDraftObjectSchema = z.object({
   external_ref: z.string().trim().max(200).optional(),
 });
 
+/**
+ * Zod `superRefine` check shared by `invoiceDraftSchema` and
+ * `importInvoicesSchema`: flags `due_date` as invalid when it falls before
+ * `issue_date`. Relies on both fields already being validated,
+ * zero-padded `YYYY-MM-DD` strings, so plain string comparison matches
+ * calendar order.
+ */
 function checkDueDate(value: { issue_date: string; due_date: string }, ctx: z.RefinementCtx) {
   if (value.due_date < value.issue_date) {
     ctx.addIssue({

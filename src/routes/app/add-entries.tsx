@@ -36,6 +36,11 @@ const EMPTY_FORM = {
   external_ref: "",
 };
 
+/**
+ * Add Entries screen. Lets the user build up a batch of invoice drafts via
+ * manual entry, CSV upload, or spreadsheet paste, review/edit/delete them,
+ * and save the whole batch in one call once every draft is valid.
+ */
 function AddEntriesPage() {
   const { orgs } = Route.useRouteContext();
   const orgId = orgs[0]!.id;
@@ -75,33 +80,42 @@ function AddEntriesPage() {
     },
     onError: () => toast.error("Couldn't save these invoices. Please try again."),
   });
+  /** Appends a single validated draft (manual entry) to the draft list and clears any prior success state. */
   function addDraft(input: InvoiceDraftInput & { source: Draft["source"] }) {
     const errors = validateDraft(input, drafts);
     setDrafts((current) => [...current, { ...input, id: crypto.randomUUID(), errors }]);
     setSuccessCount(null);
   }
+  /**
+   * Handles the manual entry form submit: updates the draft in place when
+   * `editingId` is set, otherwise appends a new draft, then resets the form.
+   */
   function addManual(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const input = { ...form, source: "Manual" as const };
     if (editingId) {
-      setDrafts((current) =>
-        current.map((draft) =>
-          draft.id === editingId
-            ? {
-                ...input,
-                id: draft.id,
-                errors: validateDraft(
-                  input,
-                  current.filter((entry) => entry.id !== draft.id),
-                ),
-              }
-            : draft,
-        ),
-      );
+      setDrafts((current) => {
+        const updated = current.map((draft) =>
+          draft.id === editingId ? { ...draft, ...input, id: draft.id } : draft,
+        );
+        return updated.map((draft) => ({
+          ...draft,
+          errors: validateDraft(
+            draft,
+            updated.filter((entry) => entry.id !== draft.id),
+          ),
+        }));
+      });
       setEditingId(null);
     } else addDraft(input);
     setForm(EMPTY_FORM);
   }
+  /**
+   * Appends parsed CSV/paste rows as new import drafts, resolving each
+   * row's account name against the org's loaded accounts and validating
+   * each resulting draft. Rejects the batch if it would exceed the 500-row
+   * limit.
+   */
   function addParsedRows(rows: ParsedInvoiceRow[]) {
     if (drafts.length + rows.length > 500) {
       setParseError("This import has more than the 500-row limit.");
@@ -124,6 +138,7 @@ function AddEntriesPage() {
     setParseError(null);
     setSuccessCount(null);
   }
+  /** Parses raw CSV/paste text with the given delimiter and adds the resulting rows as drafts, surfacing any parse error. */
   function parseInput(value: string, delimiter: "," | "\t") {
     try {
       addParsedRows(parseDelimitedInvoices(value, delimiter));
@@ -131,6 +146,10 @@ function AddEntriesPage() {
       setParseError(error instanceof Error ? error.message : "The file couldn't be parsed.");
     }
   }
+  /**
+   * Handles the CSV file input's change event: validates the file extension
+   * and size, then reads and parses its contents.
+   */
   function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -150,6 +169,10 @@ function AddEntriesPage() {
       () => setParseError("The file couldn't be read. Try another CSV file."),
     );
   }
+  /**
+   * Re-validates every draft against the others, blocks saving if any draft
+   * has errors, and otherwise submits the whole batch via `saveMutation`.
+   */
   function save() {
     const next = drafts.map((draft, _, all) => ({
       ...draft,
@@ -261,7 +284,18 @@ function AddEntriesPage() {
             setEditingId(draft.id);
             setMode("manual");
           }}
-          onDelete={(id) => setDrafts((current) => current.filter((draft) => draft.id !== id))}
+          onDelete={(id) =>
+            setDrafts((current) => {
+              const remaining = current.filter((draft) => draft.id !== id);
+              return remaining.map((draft) => ({
+                ...draft,
+                errors: validateDraft(
+                  draft,
+                  remaining.filter((entry) => entry.id !== draft.id),
+                ),
+              }));
+            })
+          }
           onSave={save}
           saving={saveMutation.isPending}
         />
@@ -270,6 +304,7 @@ function AddEntriesPage() {
   );
 }
 
+/** Manual invoice entry form: account picker plus invoice fields, used for both adding a new draft and updating one being edited. */
 function ManualForm({
   form,
   setForm,
@@ -360,6 +395,7 @@ function ManualForm({
     </form>
   );
 }
+/** Drop-zone-style panel for choosing a CSV file to import, with the current size/row-count limits shown. */
 function UploadPanel({
   inputRef,
   onFile,
@@ -387,6 +423,7 @@ function UploadPanel({
     </section>
   );
 }
+/** Textarea for pasting tab-separated spreadsheet rows, with a button to preview them as drafts. */
 function PastePanel({
   value,
   onChange,
@@ -419,6 +456,11 @@ function PastePanel({
     </section>
   );
 }
+/**
+ * Table of the current draft batch, with per-row edit/delete actions and
+ * inline validation errors. The Save button is disabled while any draft has
+ * errors.
+ */
 function DraftReview({
   drafts,
   accountNames,
@@ -517,6 +559,7 @@ function DraftReview({
     </section>
   );
 }
+/** Confirmation screen shown after a successful save, with links to view the invoices list or add more entries. */
 function SuccessState({ count, onMore }: { count: number; onMore: () => void }) {
   return (
     <div
@@ -543,6 +586,7 @@ function SuccessState({ count, onMore }: { count: number; onMore: () => void }) 
     </div>
   );
 }
+/** Labeled form field wrapper, used by `ManualForm` for each input/select. */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block text-eyebrow font-semibold tracking-widest text-fg-muted uppercase">
@@ -551,9 +595,11 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     </label>
   );
 }
+/** Lowercases, trims, and collapses whitespace in an account name so imported names can be matched against loaded accounts regardless of casing/spacing. */
 function normalizeAccount(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
+/** Builds the key used to detect duplicate drafts: the account id plus the invoice number normalized for whitespace, punctuation, and case. */
 function invoiceKey(input: Pick<InvoiceDraftInput, "account_id" | "invoice_number">) {
   return `${input.account_id}:${input.invoice_number
     .trim()
@@ -561,6 +607,12 @@ function invoiceKey(input: Pick<InvoiceDraftInput, "account_id" | "invoice_numbe
     .replace(/^\W+|\W+$/g, "")
     .toUpperCase()}`;
 }
+/**
+ * Validates a single draft against `invoiceDraftSchema` and checks it for a
+ * duplicate invoice number against the other given drafts. Returns the
+ * combined, deduplicated list of error messages (empty when the draft is
+ * valid).
+ */
 function validateDraft(
   input: InvoiceDraftInput,
   drafts: readonly Pick<Draft, "account_id" | "invoice_number">[],
