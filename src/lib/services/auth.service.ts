@@ -49,7 +49,14 @@ export const getAuthContext = createServerFn({ method: "GET" }).handler(
         .select("display_name, avatar_url")
         .eq("id", authUser.id)
         .maybeSingle(),
-      supabase.from("org_members").select("role, orgs(id, name)"),
+      // RLS lets a member see every teammate's membership row, so without the
+      // user_id filter an org comes back once per member, carrying their role.
+      // RLS is still the security boundary; this only picks the caller's rows.
+      supabase
+        .from("org_members")
+        .select("role, orgs(id, name)")
+        .eq("user_id", authUser.id)
+        .order("created_at", { ascending: true }),
     ]);
 
     // A failed query is not the same as "belongs to no orgs". Silently
