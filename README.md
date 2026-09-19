@@ -1,14 +1,14 @@
 # Collect Smart
 
-Lovable Prompt — Tagada Landing Page
+Lovable Prompt — Settle Swiftly Landing Page
 
-Paste everything below the line into Lovable as a single prompt. Swap Tagada for your final name with find-and-replace.
+Paste everything below the line into Lovable as a single prompt. Swap Settle Swiftly for your final name with find-and-replace.
 
-Build a marketing landing page for Tagada, a lightweight invoicing tool that automatically chases unpaid invoices so small businesses get paid faster.
+Build a marketing landing page for Settle Swiftly, a lightweight invoicing tool that automatically chases unpaid invoices so small businesses get paid faster.
 
 Positioning
 
-The core insight: small businesses don't have an invoicing problem, they have a getting-paid problem. Creating an invoice takes two minutes. Chasing it for six weeks is the actual pain. Every competitor (Zoho Invoice, Wave, FreshBooks, spreadsheets) treats invoicing as a document-creation task. Tagada treats it as a collections task.
+The core insight: small businesses don't have an invoicing problem, they have a getting-paid problem. Creating an invoice takes two minutes. Chasing it for six weeks is the actual pain. Every competitor (Zoho Invoice, Wave, FreshBooks, spreadsheets) treats invoicing as a document-creation task. Settle Swiftly treats it as a collections task.
 
 The entire page must sell the chase engine, not the invoice builder. The invoice builder is table stakes and should be presented as such.
 
@@ -40,7 +40,7 @@ Page structure
 
 1. Navigation
 
-Sticky, transparent-to-solid on scroll. Left: wordmark "Tagada". Right: How it works, Pricing, FAQ, then a primary button "Get early access".
+Sticky, transparent-to-solid on scroll. Left: wordmark "Settle Swiftly". Right: How it works, Pricing, FAQ, then a primary button "Get early access".
 
 2. Hero
 
@@ -48,7 +48,7 @@ Eyebrow: Invoicing + collections for people who hate both
 
 Headline: Stop chasing. Start collecting.
 
-Subhead: Tagada sends the invoice, then follows up on it — over email, WhatsApp, and SMS — until the money lands. You do nothing.
+Subhead: Settle Swiftly sends the invoice, then follows up on it — over email, WhatsApp, and SMS — until the money lands. You do nothing.
 
 Primary CTA: email input + button "Join the waitlist"
 
@@ -70,13 +70,13 @@ Most owners give up after the second reminder. Mark these as placeholders in a c
 
 Send it. Create an invoice in under a minute. Templates, your logo, GST or sales tax handled automatically.
 
-Forget it. Tagada takes over. Reminders go out on a schedule you set, in a tone you choose, across email, WhatsApp, and SMS.
+Forget it. Settle Swiftly takes over. Reminders go out on a schedule you set, in a tone you choose, across email, WhatsApp, and SMS.
 
 Get paid. Client clicks, pays through Razorpay or Stripe, and the invoice reconciles itself. You get a notification, not a spreadsheet.
 
 5. The chase engine — the hero feature section
 
-Full-width section, visually the most prominent block on the page after the hero. Headline: Politeness that escalates. Body: Set the cadence once. Tagada starts friendly and gets firmer on a schedule you control — and stops the instant the invoice is paid. No awkward emails from you. No relationship damage. Include an interactive-looking (can be static) tone selector showing three modes: Gentle, Standard, Firm — each displaying a sample message preview. Clicking a mode swaps the preview text. Write real sample copy for all three.
+Full-width section, visually the most prominent block on the page after the hero. Headline: Politeness that escalates. Body: Set the cadence once. Settle Swiftly starts friendly and gets firmer on a schedule you control — and stops the instant the invoice is paid. No awkward emails from you. No relationship damage. Include an interactive-looking (can be static) tone selector showing three modes: Gentle, Standard, Firm — each displaying a sample message preview. Clicking a mode swaps the preview text. Write real sample copy for all three.
 
 6. Feature grid
 
@@ -100,7 +100,7 @@ Split section. Left column headed India: GST-compliant invoices, Razorpay and UP
 
 8. Comparison table
 
-Columns: Tagada · Zoho Invoice · Wave · Spreadsheets. Rows: Automated escalating reminders, WhatsApp follow-ups, Auto-reconciliation, Setup time, Accountant required, Price. Tagada column highlighted in the accent color. Keep it honest — don't mark competitors down on things they genuinely do well.
+Columns: Settle Swiftly · Zoho Invoice · Wave · Spreadsheets. Rows: Automated escalating reminders, WhatsApp follow-ups, Auto-reconciliation, Setup time, Accountant required, Price. Settle Swiftly column highlighted in the accent color. Keep it honest — don't mark competitors down on things they genuinely do well.
 
 9. Social proof
 
@@ -160,7 +160,7 @@ This matters as much as the design — the page needs to be citable by AI search
 
 Semantic HTML throughout: <header>, <nav>, <main>, <section>, <article>, <footer>. No div soup.
 
-Title tag: Tagada — Invoicing that chases your unpaid invoices for you
+Title tag: Settle Swiftly — Invoicing that chases your unpaid invoices for you
 
 Meta description under 155 characters, written to be quoted.
 
