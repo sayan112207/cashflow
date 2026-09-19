@@ -267,7 +267,7 @@ function centsToMoney(cents: bigint): string {
 
 /** `GET /api/v1/accounts` */
 export async function getAccounts(params: AccountsListParams = {}): Promise<AccountsList> {
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     return accountsListSchema.parse(filterMockList(getMockAccountsList(), params));
   }
@@ -283,7 +283,7 @@ export async function getAccounts(params: AccountsListParams = {}): Promise<Acco
 export async function getAccount(accountId: string): Promise<AccountDetail> {
   const id = accountIdSchema.parse(accountId);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     const detail = getMockAccountDetail(id);
     if (!detail) {
@@ -303,7 +303,7 @@ export async function getAccount(accountId: string): Promise<AccountDetail> {
 export async function getAccountInvoices(accountId: string): Promise<AccountInvoices> {
   const id = accountIdSchema.parse(accountId);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     const invoices = getMockAccountInvoices(id);
     if (!invoices) {
@@ -323,7 +323,7 @@ export async function getAccountInvoices(accountId: string): Promise<AccountInvo
 export async function getAccountContacts(accountId: string): Promise<AccountContacts> {
   const id = accountIdSchema.parse(accountId);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     const contacts = getMockAccountContacts(id);
     if (!contacts) {
@@ -343,7 +343,7 @@ export async function getAccountContacts(accountId: string): Promise<AccountCont
 export async function getAccountPayments(accountId: string): Promise<AccountPayments> {
   const id = accountIdSchema.parse(accountId);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     const payments = getMockAccountPayments(id);
     if (!payments) {
@@ -368,7 +368,7 @@ export async function getAccountActivity(
   const safeLimit =
     limit === undefined ? undefined : z.number().int().positive().max(100).parse(limit);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     const activity = getMockAccountActivity(id, safeLimit);
     if (!activity) {
@@ -395,7 +395,7 @@ export async function createAccountContact(
   const payload = createContactBodySchema.parse(body);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountContactsSchema.parse(mockCreateContact(id, payload, match));
@@ -428,7 +428,7 @@ export async function updateAccountContact(
   const payload = updateContactBodySchema.parse(body);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountContactsSchema.parse(mockUpdateContact(id, cid, payload, match));
@@ -459,7 +459,7 @@ export async function deleteAccountContact(
   const cid = accountIdSchema.parse(contactId);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountContactsSchema.parse(mockDeleteContact(id, cid, match));
@@ -488,7 +488,7 @@ export async function updateAccountEscalation(
   const payload = updateEscalationBodySchema.parse(body);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountContactsSchema.parse(mockUpdateEscalation(id, payload, match));
@@ -519,7 +519,7 @@ export async function updateChasingSettings(
   const payload = updateChasingSettingsBodySchema.parse(body);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountDetailSchema.parse(mockUpdateChasingSettings(id, payload, match));
@@ -550,7 +550,7 @@ export async function archiveAccount(
   const payload = archiveAccountBodySchema.parse(body);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountDetailSchema.parse(mockArchiveAccount(id, payload, match));
@@ -581,7 +581,7 @@ export async function pauseAccount(
   const payload = pauseAccountBodySchema.parse(body);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountDetailSchema.parse(mockPauseAccount(id, payload, match));
@@ -607,7 +607,7 @@ export async function resumeAccount(accountId: string, ifMatch: string): Promise
   const id = accountIdSchema.parse(accountId);
   const match = ifMatchSchema.parse(ifMatch);
 
-  if (getPublicEnv().useMocks) {
+  if (getPublicEnv().useAccountsMocks) {
     await delay(MOCK_DELAY_MS);
     try {
       return accountDetailSchema.parse(mockResumeAccount(id, match));

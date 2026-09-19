@@ -24,8 +24,11 @@ import { Route as AppPaymentsRouteImport } from './routes/app/payments'
 import { Route as AppReportsRouteImport } from './routes/app/reports'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as ApiV1ChasesRouteImport } from './routes/api/v1/chases'
 import { Route as AppAccountsIndexRouteImport } from './routes/app/accounts.index'
 import { Route as AppAccountsAccountIdRouteImport } from './routes/app/accounts.$accountId'
+import { Route as ApiV1DashboardChaseQueueRouteImport } from './routes/api/v1/dashboard/chase-queue'
+import { Route as ApiV1DashboardSummaryRouteImport } from './routes/api/v1/dashboard/summary'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -102,6 +105,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1ChasesRoute = ApiV1ChasesRouteImport.update({
+  id: '/api/v1/chases',
+  path: '/api/v1/chases',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppAccountsIndexRoute = AppAccountsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -111,6 +119,17 @@ const AppAccountsAccountIdRoute = AppAccountsAccountIdRouteImport.update({
   id: '/$accountId',
   path: '/$accountId',
   getParentRoute: () => AppAccountsRoute,
+} as any)
+const ApiV1DashboardChaseQueueRoute =
+  ApiV1DashboardChaseQueueRouteImport.update({
+    id: '/api/v1/dashboard/chase-queue',
+    path: '/api/v1/dashboard/chase-queue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1DashboardSummaryRoute = ApiV1DashboardSummaryRouteImport.update({
+  id: '/api/v1/dashboard/summary',
+  path: '/api/v1/dashboard/summary',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -129,8 +148,11 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/api/v1/chases': typeof ApiV1ChasesRoute
   '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
   '/app/accounts/': typeof AppAccountsIndexRoute
+  '/api/v1/dashboard/chase-queue': typeof ApiV1DashboardChaseQueueRoute
+  '/api/v1/dashboard/summary': typeof ApiV1DashboardSummaryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -146,8 +168,11 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app': typeof AppIndexRoute
+  '/api/v1/chases': typeof ApiV1ChasesRoute
   '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
   '/app/accounts': typeof AppAccountsIndexRoute
+  '/api/v1/dashboard/chase-queue': typeof ApiV1DashboardChaseQueueRoute
+  '/api/v1/dashboard/summary': typeof ApiV1DashboardSummaryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -166,8 +191,11 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/api/v1/chases': typeof ApiV1ChasesRoute
   '/app/accounts/$accountId': typeof AppAccountsAccountIdRoute
   '/app/accounts/': typeof AppAccountsIndexRoute
+  '/api/v1/dashboard/chase-queue': typeof ApiV1DashboardChaseQueueRoute
+  '/api/v1/dashboard/summary': typeof ApiV1DashboardSummaryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -187,8 +215,11 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/api/v1/chases'
     | '/app/accounts/$accountId'
     | '/app/accounts/'
+    | '/api/v1/dashboard/chase-queue'
+    | '/api/v1/dashboard/summary'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -204,8 +235,11 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app'
+    | '/api/v1/chases'
     | '/app/accounts/$accountId'
     | '/app/accounts'
+    | '/api/v1/dashboard/chase-queue'
+    | '/api/v1/dashboard/summary'
   id:
     | '__root__'
     | '/'
@@ -223,8 +257,11 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/api/v1/chases'
     | '/app/accounts/$accountId'
     | '/app/accounts/'
+    | '/api/v1/dashboard/chase-queue'
+    | '/api/v1/dashboard/summary'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -234,6 +271,9 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  ApiV1ChasesRoute: typeof ApiV1ChasesRoute
+  ApiV1DashboardChaseQueueRoute: typeof ApiV1DashboardChaseQueueRoute
+  ApiV1DashboardSummaryRoute: typeof ApiV1DashboardSummaryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -343,6 +383,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/chases': {
+      id: '/api/v1/chases'
+      path: '/api/v1/chases'
+      fullPath: '/api/v1/chases'
+      preLoaderRoute: typeof ApiV1ChasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/accounts/': {
       id: '/app/accounts/'
       path: '/'
@@ -356,6 +403,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/accounts/$accountId'
       preLoaderRoute: typeof AppAccountsAccountIdRouteImport
       parentRoute: typeof AppAccountsRoute
+    }
+    '/api/v1/dashboard/chase-queue': {
+      id: '/api/v1/dashboard/chase-queue'
+      path: '/api/v1/dashboard/chase-queue'
+      fullPath: '/api/v1/dashboard/chase-queue'
+      preLoaderRoute: typeof ApiV1DashboardChaseQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/dashboard/summary': {
+      id: '/api/v1/dashboard/summary'
+      path: '/api/v1/dashboard/summary'
+      fullPath: '/api/v1/dashboard/summary'
+      preLoaderRoute: typeof ApiV1DashboardSummaryRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -407,6 +468,9 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  ApiV1ChasesRoute: ApiV1ChasesRoute,
+  ApiV1DashboardChaseQueueRoute: ApiV1DashboardChaseQueueRoute,
+  ApiV1DashboardSummaryRoute: ApiV1DashboardSummaryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
