@@ -40,7 +40,7 @@ Page structure
 
 1. Navigation
 
-Sticky, transparent-to-solid on scroll. Left: wordmark "Settle Swiftly". Right: How it works, Pricing, FAQ, then a primary button "Get early access".
+Sticky, transparent-to-solid on scroll. Left: wordmark "Settle Swiftly". Right: How it works, Product, Pricing, FAQ, then a "Sign in" link to /login and a primary button "Get started" linking to /signup.
 
 2. Hero
 
@@ -50,9 +50,9 @@ Headline: Stop chasing. Start collecting.
 
 Subhead: Settle Swiftly sends the invoice, then follows up on it — over email, WhatsApp, and SMS — until the money lands. You do nothing.
 
-Primary CTA: email input + button "Join the waitlist"
+Primary CTA: button "Get started" linking to /signup, beside a secondary "See how it works" link.
 
-Micro-copy under the form: Free during beta. India and global. No card required.
+Micro-copy under the buttons: Free during beta. India and global. No card required.
 
 Right side (or below on mobile): a product visual — a clean invoice card labelled "Invoice #0042 · ₹48,000 · 12 days overdue" with a vertical timeline beside it showing automated touchpoints: Day 1 Invoice sent → Day 7 Gentle reminder → Day 14 WhatsApp nudge → Day 21 Firm follow-up → PAID in the accent color. Build this in HTML/CSS, not an image.
 
@@ -134,7 +134,7 @@ What happens to my data if I leave? Write substantive two-to-three sentence answ
 
 12. Final CTA
 
-Full-width band in the accent color. Headline: Your money is sitting in someone else's account. Subhead: Let's go get it. Email capture + "Join the waitlist" button.
+Full-width band in the accent color. Headline: Your money is sitting in someone else's account. Subhead: Let's go get it. Primary button "Create your account" linking to /signup, and a secondary "Sign in" linking to /login.
 
 13. Footer
 
@@ -144,7 +144,7 @@ Technical requirements
 
 React with Tailwind CSS. Component-per-section, clean file structure.
 
-Waitlist form: capture email, validate format, show a success state inline. Wire to Supabase if available; otherwise store in local state and log, with a clear TODO comment marking where the backend hook goes.
+Sign-up: every CTA routes to /signup (sign-in to /login). There is no waitlist or email-capture form; users create an account directly.
 
 Currency toggle must actually work and drive the pricing display.
 

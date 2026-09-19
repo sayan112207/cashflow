@@ -17,7 +17,7 @@ export function Nav() {
       >
         <a href="#top" className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ink text-sm font-bold text-white">
-            T
+            S
           </span>
           <span className="text-[17px] font-semibold tracking-[-0.01em] text-ink">
             Settle Swiftly
