@@ -284,7 +284,7 @@ function AddEntriesPage() {
             setEditingId(draft.id);
             setMode("manual");
           }}
-          onDelete={(id) =>
+          onDelete={(id) => {
             setDrafts((current) => {
               const remaining = current.filter((draft) => draft.id !== id);
               return remaining.map((draft) => ({
@@ -294,8 +294,12 @@ function AddEntriesPage() {
                   remaining.filter((entry) => entry.id !== draft.id),
                 ),
               }));
-            })
-          }
+            });
+            if (id === editingId) {
+              setEditingId(null);
+              setForm(EMPTY_FORM);
+            }
+          }}
           onSave={save}
           saving={saveMutation.isPending}
         />
