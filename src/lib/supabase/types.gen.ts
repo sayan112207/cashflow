@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -23,6 +23,9 @@ export type Database = {
           name_normalized: string | null
           notes: string | null
           org_id: string
+          pause_reason: string | null
+          paused_at: string | null
+          paused_until: string | null
           updated_at: string
         }
         Insert: {
@@ -33,6 +36,9 @@ export type Database = {
           name_normalized?: string | null
           notes?: string | null
           org_id: string
+          pause_reason?: string | null
+          paused_at?: string | null
+          paused_until?: string | null
           updated_at?: string
         }
         Update: {
@@ -43,6 +49,9 @@ export type Database = {
           name_normalized?: string | null
           notes?: string | null
           org_id?: string
+          pause_reason?: string | null
+          paused_at?: string | null
+          paused_until?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -631,10 +640,57 @@ export type Database = {
         }
         Relationships: []
       }
+      chase_requests: {
+        Row: {
+          id: string
+          invoice_id: string
+          org_id: string
+          requested_at: string
+          requested_by: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          org_id: string
+          requested_at?: string
+          requested_by: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          org_id?: string
+          requested_at?: string
+          requested_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chase_requests_invoice_fk"
+            columns: ["invoice_id", "org_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "org_id"]
+          },
+          {
+            foreignKeyName: "chase_requests_invoice_fk"
+            columns: ["invoice_id", "org_id"]
+            isOneToOne: false
+            referencedRelation: "v_invoice_aging"
+            referencedColumns: ["invoice_id", "org_id"]
+          },
+          {
+            foreignKeyName: "chase_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           account_id: string
           created_at: string
+          delivery_state: Database["public"]["Enums"]["delivery_state"]
           email: string | null
           id: string
           is_active: boolean
@@ -650,6 +706,7 @@ export type Database = {
         Insert: {
           account_id: string
           created_at?: string
+          delivery_state?: Database["public"]["Enums"]["delivery_state"]
           email?: string | null
           id?: string
           is_active?: boolean
@@ -665,6 +722,7 @@ export type Database = {
         Update: {
           account_id?: string
           created_at?: string
+          delivery_state?: Database["public"]["Enums"]["delivery_state"]
           email?: string | null
           id?: string
           is_active?: boolean
@@ -707,13 +765,18 @@ export type Database = {
           amount: number
           created_at: string
           currency: string
+          disputed_at: string | null
           due_date: string
           external_ref: string | null
           id: string
           invoice_number: string
           invoice_number_normalized: string | null
           issue_date: string
+          last_promise_broken_at: string | null
           org_id: string
+          promise_broken_count: number
+          promised_at: string | null
+          promised_date: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           updated_at: string
         }
@@ -722,13 +785,18 @@ export type Database = {
           amount: number
           created_at?: string
           currency?: string
+          disputed_at?: string | null
           due_date: string
           external_ref?: string | null
           id?: string
           invoice_number: string
           invoice_number_normalized?: string | null
           issue_date?: string
+          last_promise_broken_at?: string | null
           org_id: string
+          promise_broken_count?: number
+          promised_at?: string | null
+          promised_date?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
         }
@@ -737,13 +805,18 @@ export type Database = {
           amount?: number
           created_at?: string
           currency?: string
+          disputed_at?: string | null
           due_date?: string
           external_ref?: string | null
           id?: string
           invoice_number?: string
           invoice_number_normalized?: string | null
           issue_date?: string
+          last_promise_broken_at?: string | null
           org_id?: string
+          promise_broken_count?: number
+          promised_at?: string | null
+          promised_date?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
         }
@@ -806,6 +879,7 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          timezone: string
           updated_at: string
         }
         Insert: {
@@ -813,6 +887,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name: string
+          timezone?: string
           updated_at?: string
         }
         Update: {
@@ -820,6 +895,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name?: string
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
@@ -1156,6 +1232,7 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          timezone: string
           updated_at: string
         }
         SetofOptions: {
@@ -1165,6 +1242,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reconcile_broken_promises: { Args: { p_org: string }; Returns: number }
       schedule_reminder: {
         Args: {
           p_channel: Database["public"]["Enums"]["contact_channel"]
@@ -1195,6 +1273,7 @@ export type Database = {
     Enums: {
       contact_channel: "email" | "whatsapp" | "sms"
       contact_priority: "P0" | "P1" | "P2"
+      delivery_state: "verified" | "unverified" | "bounced"
       invoice_status:
         | "draft"
         | "open"
@@ -1220,12 +1299,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1249,11 +1328,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1274,11 +1353,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1299,11 +1378,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1316,11 +1395,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1334,6 +1413,7 @@ export const Constants = {
     Enums: {
       contact_channel: ["email", "whatsapp", "sms"],
       contact_priority: ["P0", "P1", "P2"],
+      delivery_state: ["verified", "unverified", "bounced"],
       invoice_status: [
         "draft",
         "open",

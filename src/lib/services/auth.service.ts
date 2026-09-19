@@ -43,21 +43,37 @@ export const getAuthContext = createServerFn({ method: "GET" }).handler(
 
     const authUser = userData.user;
 
-    const [{ data: profile }, { data: memberships, error: membershipsError }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("display_name, avatar_url")
-        .eq("id", authUser.id)
-        .maybeSingle(),
-      // RLS lets a member see every teammate's membership row, so without the
-      // user_id filter an org comes back once per member, carrying their role.
-      // RLS is still the security boundary; this only picks the caller's rows.
-      supabase
-        .from("org_members")
-        .select("role, orgs(id, name)")
-        .eq("user_id", authUser.id)
-        .order("created_at", { ascending: true }),
-    ]);
+    const loadProfileAndMemberships = () =>
+      Promise.all([
+        supabase
+          .from("profiles")
+          .select("display_name, avatar_url")
+          .eq("id", authUser.id)
+          .maybeSingle(),
+        // RLS lets a member see every teammate's membership row, so without the
+        // user_id filter an org comes back once per member, carrying their role.
+        // RLS is still the security boundary; this only picks the caller's rows.
+        // Oldest first: orgs[0] is the org the shell shows, and the dashboard
+        // API resolves the same one.
+        supabase
+          .from("org_members")
+          .select("role, orgs(id, name)")
+          .eq("user_id", authUser.id)
+          .order("created_at", { ascending: true }),
+      ]);
+
+    let [{ data: profile }, { data: memberships, error: membershipsError }] =
+      await loadProfileAndMemberships();
+
+    // PGRST303 "JWT issued at future": a token minted moments ago by Supabase
+    // Auth can be rejected by PostgREST when their clocks drift by a second or
+    // two — typically right after an OAuth sign-in. It clears on its own, so
+    // wait briefly and try once more before failing the whole route.
+    if (membershipsError?.code === "PGRST303") {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      [{ data: profile }, { data: memberships, error: membershipsError }] =
+        await loadProfileAndMemberships();
+    }
 
     // A failed query is not the same as "belongs to no orgs". Silently
     // returning an empty list would send an existing user to /onboarding and
