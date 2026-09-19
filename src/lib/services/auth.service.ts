@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { z } from "zod";
 
+import { retryOnJwtSkew } from "@/lib/supabase/jwt-skew-retry";
 import { getUserSupabase } from "@/lib/supabase/user-client.server";
 import { signInSchema, signUpSchema } from "@/lib/schemas/auth.schema";
 
@@ -62,18 +63,10 @@ export const getAuthContext = createServerFn({ method: "GET" }).handler(
           .order("created_at", { ascending: true }),
       ]);
 
-    let [{ data: profile }, { data: memberships, error: membershipsError }] =
-      await loadProfileAndMemberships();
-
-    // PGRST303 "JWT issued at future": a token minted moments ago by Supabase
-    // Auth can be rejected by PostgREST when their clocks drift by a second or
-    // two — typically right after an OAuth sign-in. It clears on its own, so
-    // wait briefly and try once more before failing the whole route.
-    if (membershipsError?.code === "PGRST303") {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      [{ data: profile }, { data: memberships, error: membershipsError }] =
-        await loadProfileAndMemberships();
-    }
+    // Retried once on PGRST303 (JWT issued at future): the membership query is
+    // the first PostgREST call after an OAuth sign-in, where clock drift bites.
+    const [{ data: profile }, { data: memberships, error: membershipsError }] =
+      await retryOnJwtSkew(loadProfileAndMemberships, ([, m]) => m.error);
 
     // A failed query is not the same as "belongs to no orgs". Silently
     // returning an empty list would send an existing user to /onboarding and

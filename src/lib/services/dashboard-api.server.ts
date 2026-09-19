@@ -32,6 +32,7 @@ import {
   type BookInvoice,
   type IsoDate,
 } from "@/lib/services/dashboard-rules";
+import { retryOnJwtSkew } from "@/lib/supabase/jwt-skew-retry";
 import { getUserSupabase } from "@/lib/supabase/user-client.server";
 
 type Supabase = ReturnType<typeof getUserSupabase>;
@@ -97,13 +98,21 @@ async function resolveCaller(): Promise<Caller> {
     throw new ApiError(401, "unauthenticated", "Your session expired. Please sign in again.");
   }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from("org_members")
-    .select("org_id, orgs(timezone)")
-    .eq("user_id", userData.user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  // Retried once on PGRST303 (JWT issued at future): right after an OAuth
+  // sign-in this is the first PostgREST call, and a brief clock drift between
+  // Auth and PostgREST would otherwise turn all three endpoints into a 500.
+  const userId = userData.user.id;
+  const { data: membership, error: membershipError } = await retryOnJwtSkew(
+    () =>
+      supabase
+        .from("org_members")
+        .select("org_id, orgs(timezone)")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
+    (result) => result.error,
+  );
 
   if (membershipError) throw membershipError;
   if (!membership) {
